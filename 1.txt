@@ -1,0 +1,31 @@
+set coordfile=%~dp0BuildCoordinatorStatus2.xml
+:start
+xgcoordconsole.exe /exportstatus=%~dp0BuildCoordinatorStatus.xml
+Powershell.exe -File %~dp0normalize.ps1
+find /c "Building=""True""" %coordfile%
+if %errorlevel% equ 1 goto notfound
+CALL _520_build_helper.Bat
+CALL _520_build_helper2.Bat
+CALL _520_sao.Bat
+goto done
+:notfound
+
+find "Online=""True""" %coordfile%|find "Host=""BUILD_HELPER"""|find "LoggedOnUsers="""""
+if %errorlevel% equ 1 goto noBUILD_HELPER
+shutdown /s /t 0 /c "nothing to build" /f /m BUILD_HELPER
+:noBUILD_HELPER
+
+find "Online=""True""" %coordfile%|find "Host=""SAO"""|find "LoggedOnUsers="""""
+if %errorlevel% equ 1 goto nosao
+shutdown /s /t 0 /c "nothing to build" /f /m SAO
+:nosao
+
+find "Online=""True""" %coordfile%|find "Host=""SAO"""|find "LoggedOnUsers="""""
+if %errorlevel% equ 1 goto nosao
+shutdown /s /t 0 /c "nothing to build" /f /m SAO
+:nosao
+
+goto done
+:done
+timeout 15
+goto :start
