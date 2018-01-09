@@ -13,7 +13,7 @@ Do
     $Command = "xgcoordconsole.exe"
     $Parms = ("/exportstatus=$($statusfile)")
     $Prms = $Parms.Split(" ")
-    & "$Command" $Prms
+    & "$Command" $Prms | out-null
 
 
     [xml]$XmlDocument = Get-Content -Path $statusfile
@@ -36,22 +36,41 @@ Do
             if ($Agent.Attributes.GetNamedItem("Online").Value -eq "True")
             {
                 $machinefilename = "$($thispath)\machines\$($AgentName)"
-                $results = Get-MACAddress $AgentName | Out-String
-                if ($results -ne "")
+
+                #file exists and size is greater than 0 and was created NOT recently (5 days) - DO nothing
+                $timespan = new-timespan -days 5
+                $condition = ((Test-Path $machinefilename) -and ((Get-Item $machinefilename).Length -gt 0) -and (((get-date) - (Get-Item $machinefilename).LastWriteTime) -gt $timespan))
+                if ($condition)
                 {
-                    $results | Out-File $machinefilename
+                    #only for machines that are phisically online:
+                    $ison = Test-Connection $AgentName -Count 1 -Quiet
+                    if ($ison)
+                    {
+                        echo "Getting MAC of: $($AgentName)...."
+                        $results = Get-MACAddress $AgentName | Out-String
+                        if ($results -ne "")
+                        {
+                            $results | Out-File $machinefilename
+                        }
+                    }
                 }
             }
             if (($Agent.Attributes.GetNamedItem("LoggedOnUsers").Value -eq "") -and ($Agent.Attributes.GetNamedItem("Online").Value -eq "True"))
             {
-                echo $AgentName
-                stop-computer $AgentName
+                #only for machines that are phisically online:
+                $ison = Test-Connection $AgentName -Count 1 -Quiet
+                if ($ison)
+                {
+                    echo "Stopping: $($AgentName)...."
+                    stop-computer $AgentName
+                }
             }
         }
     }
     else
     {
-       echo "starting machines..."
+       $started = $false
+
        FOREACH ($Agent in $Agents.ChildNodes)
        {
            $AgentName = $Agent.Attributes.GetNamedItem("Host").Value
@@ -62,6 +81,11 @@ Do
                 {
                     if($line.Contains(":"))
                     {
+                       if ($started -eq $false)
+                       {
+                            echo "starting machines..."
+                            $started = $true
+                       }
                        $line = $line -replace ':',''
                        $Command = "$($thispath)/bin/WolCmd.exe"
                        $Parms = "$($line) 192.168.0.1 255.255.255.0 3"
@@ -72,6 +96,6 @@ Do
            }
        }
     }
-    echo "Sleep 15 seconds"
-    start-sleep -seconds 15
+    Get-Date -Format HH:MM:ss
+    start-sleep -seconds 5
 } While ($TRUE)
