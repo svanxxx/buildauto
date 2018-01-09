@@ -1,10 +1,11 @@
 # extract current file path
 $thispath = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 # include WOL command
-. ($thispath + '.\SendWOL.ps1')
-. ($thispath + '.\GetMACAddress.ps1')
+. ($thispath + '.\add\SendWOL.ps1')
+. ($thispath + '.\add\GetMACAddress.ps1')
 
 $statusfile = "$($thispath)/tmp/Status.xml"
+$mymachines = New-Object System.Collections.ArrayList
 
 echo "Starting build machines control"
 Do
@@ -29,7 +30,7 @@ Do
     }
     if ($Building -eq $false)
     {
-        echo "stopping machines..."
+        $stopped = $false
         FOREACH ($Agent in $Agents.ChildNodes)
         {
             $AgentName = $Agent.Attributes.GetNamedItem("Host").Value
@@ -55,12 +56,19 @@ Do
                     }
                 }
             }
-            if (($Agent.Attributes.GetNamedItem("LoggedOnUsers").Value -eq "") -and ($Agent.Attributes.GetNamedItem("Online").Value -eq "True"))
+            if (($mymachines.Contains($AgentName)) -and ($Agent.Attributes.GetNamedItem("LoggedOnUsers").Value -eq "") -and ($Agent.Attributes.GetNamedItem("Online").Value -eq "True"))
             {
+                $mymachines.Remove($AgentName)
                 #only for machines that are phisically online:
                 $ison = Test-Connection $AgentName -Count 1 -Quiet
                 if ($ison)
                 {
+                    if ($stopped -eq $false)
+                    {
+                        echo "stopping machines..."
+                        $stopped = $true
+                    }
+
                     echo "Stopping: $($AgentName)...."
                     stop-computer $AgentName
                 }
@@ -77,6 +85,10 @@ Do
            $AgentFile = "$($thispath)/machines/$($AgentName)"
            if ((Test-Path $AgentFile) -and ($Agent.Attributes.GetNamedItem("LoggedOnUsers").Value -eq "") -and ($Agent.Attributes.GetNamedItem("Online").Value -eq "False"))
            {
+                if ($mymachines.Contains($AgentName) -eq $false)
+                {
+                    $mymachines.Add($AgentName)
+                }
                 foreach($line in Get-Content $AgentFile)
                 {
                     if($line.Contains(":"))
