@@ -28,34 +28,41 @@ Do
            break
         }
     }
+
+    #checking MAC addresses
+    FOREACH ($Agent in $Agents.ChildNodes)
+    {
+        $AgentName = $Agent.Attributes.GetNamedItem("Host").Value
+        if ($Agent.Attributes.GetNamedItem("Online").Value -eq "True")
+        {
+            $machinefilename = "$($thispath)\machines\$($AgentName)"
+
+            #file exists and size is greater than 0 and was created NOT recently (5 days) - DO nothing
+            $timespan = new-timespan -days 5
+            $condition = ((Test-Path $machinefilename) -and ((Get-Item $machinefilename).Length -gt 0) -and (((get-date) - (Get-Item $machinefilename).LastWriteTime) -lt $timespan))
+            if ($condition -eq $false)
+            {
+                #only for machines that are phisically online:
+                $ison = Test-Connection $AgentName -Count 1 -Quiet
+                if ($ison)
+                {
+                    echo "Getting MAC of: $($AgentName)...."
+                    $results = Get-MACAddress $AgentName | Out-String
+                    if ($results -ne "")
+                    {
+                        $results | Out-File $machinefilename
+                    }
+                }
+            }
+        }
+    }
+
     if ($Building -eq $false)
     {
         $stopped = $false
         FOREACH ($Agent in $Agents.ChildNodes)
         {
             $AgentName = $Agent.Attributes.GetNamedItem("Host").Value
-            if ($Agent.Attributes.GetNamedItem("Online").Value -eq "True")
-            {
-                $machinefilename = "$($thispath)\machines\$($AgentName)"
-
-                #file exists and size is greater than 0 and was created NOT recently (5 days) - DO nothing
-                $timespan = new-timespan -days 5
-                $condition = ((Test-Path $machinefilename) -and ((Get-Item $machinefilename).Length -gt 0) -and (((get-date) - (Get-Item $machinefilename).LastWriteTime) -gt $timespan))
-                if ($condition)
-                {
-                    #only for machines that are phisically online:
-                    $ison = Test-Connection $AgentName -Count 1 -Quiet
-                    if ($ison)
-                    {
-                        echo "Getting MAC of: $($AgentName)...."
-                        $results = Get-MACAddress $AgentName | Out-String
-                        if ($results -ne "")
-                        {
-                            $results | Out-File $machinefilename
-                        }
-                    }
-                }
-            }
             if (($mymachines.Contains($AgentName)) -and ($Agent.Attributes.GetNamedItem("LoggedOnUsers").Value -eq "") -and ($Agent.Attributes.GetNamedItem("Online").Value -eq "True"))
             {
                 $mymachines.Remove($AgentName)
@@ -78,7 +85,6 @@ Do
     else
     {
        $started = $false
-
        FOREACH ($Agent in $Agents.ChildNodes)
        {
            $AgentName = $Agent.Attributes.GetNamedItem("Host").Value
