@@ -5,8 +5,8 @@ $bstfile = "$($workdir)Common\BSTUserName.h"
 $temp = [System.IO.Path]::GetTempPath();
 $outfile = "$($temp)buildoutput.log";
 $fipoutfile = "$($temp)fipbuildoutput.log";
-#$svc = New-WebServiceProxy –Uri ‘http://192.168.0.1/taskmanagerbeta/trservice.asmx?WSDL’
-$svc = New-WebServiceProxy –Uri ‘http://localhost:8311/TRService.asmx?WSDL’
+$svc = New-WebServiceProxy –Uri ‘http://192.168.0.1/taskmanagerbeta/trservice.asmx?WSDL’
+#$svc = New-WebServiceProxy –Uri ‘http://localhost:8311/TRService.asmx?WSDL’
 $request = $null;
 
 function Progress-Out([string]$txt)
@@ -31,8 +31,8 @@ function Build-Version()
     #=========================================================
     # GIT - getting code
     #=========================================================
-    Progress-Out "getting code from git..."
     Progress-Out $branch
+    Progress-Out "getting code from git..."
     Set-Location $($workdir);
     cmd /c "git reset --hard" | Out-File $($outfile) -Append;
     cmd /c "git fetch --all" | Out-File $($outfile) -Append;
@@ -43,8 +43,6 @@ function Build-Version()
     # FIP - building
     #=========================================================
     Progress-Out "building fieldpro..."
-
-    return
 
     "#define _BSTUserName _T("".$($user)"")" | Out-File $($bstfile)
 
@@ -89,4 +87,3 @@ while ($true)
     echo "$(Get-Date)"
     Start-Sleep -s 20
 }
-

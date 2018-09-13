@@ -1,3 +1,4 @@
+$svc = New-WebServiceProxy –Uri ‘http://192.168.0.1/taskmanagerbeta/trservice.asmx?WSDL’
 # extract current file path
 $thispath = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 # include WOL command
@@ -27,6 +28,11 @@ Do
            $Building = $true
            break
         }
+    }
+
+    if ($Building -eq $false)
+    {
+        $Building = $svc.hasBuildRequest()
     }
 
     #checking MAC addresses
