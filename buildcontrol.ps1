@@ -83,7 +83,10 @@ Do
                     }
 
                     echo "Stopping: $($AgentName)...."
-                    stop-computer $AgentName
+                    if ($svc.hasBuildRequest() -eq $false)
+                    {
+                        stop-computer $AgentName
+                    }
                 }
             }
         }
