@@ -8,6 +8,7 @@ $fipoutfile = "$($temp)fipbuildoutput.log";
 $svc = New-WebServiceProxy –Uri ‘http://192.168.0.1/taskmanagerbeta/trservice.asmx?WSDL’
 #$svc = New-WebServiceProxy –Uri ‘http://localhost:8311/TRService.asmx?WSDL’
 $request = $null;
+$vspath = """C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.com"""
 
 function Progress-Out([string]$txt)
 {
@@ -21,8 +22,8 @@ function Build-Version()
     $branch = "TT$($request.TTID)";
     $user = "$($request.USER)";
     $version = "V8E";
-    $ttid = "$($branch) $($request.SUMMARY)";
-    $comment = "$($request.COMM)";
+    $ttid = """$($branch) $($request.SUMMARY)""";
+    $comment = """$($request.COMM)""";
 
     "buildheler:" | Out-File $($outfile);
     Progress-Out "Starting build..."
@@ -42,12 +43,11 @@ function Build-Version()
     #=========================================================
     # FIP - building
     #=========================================================
-    Progress-Out "building fieldpro..."
-
     "#define _BSTUserName _T("".$($user)"")" | Out-File $($bstfile)
 
     $buildcommand = "BuildConsole.exe ""$($workdir)Projects.32\All.sln"" /rebuild /cfg=""Release|Mixed Platforms"" /NOLOGO /OUT=""$($fipoutfile)"""
     Progress-Out $buildcommand
+    Progress-Out "building fieldpro..."
 
     cmd /c "$($buildcommand)"
 
@@ -56,7 +56,7 @@ function Build-Version()
     #=========================================================
     Progress-Out "building CX..."
     Set-Location $($builddir);
-    cmd /c """C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.com"" /clean Release Modules.sln"
+    cmd /c "$($vspath) /clean Release Modules.sln"
 
     $srclib = "$($workdir)Modules.32\Release.lib\Src.lib"
     $srclib0 = "$($workdir)Modules.32\Release.lib\SRC\Src.lib"
@@ -65,16 +65,20 @@ function Build-Version()
         Copy-Item -Path $srclib0 -Destination $srclib -Force
     }
 
-    cmd /c """C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.com"" /build Release Modules.sln"
-    cmd /c """C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.com"" /build Release Modules.sln"
-    cmd /c """C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.com"" /build Release Modules.sln" | Out-File $($outfile) -Append;
+    cmd /c "$($vspath) /build Release Modules.sln"
+    cmd /c "$($vspath) /build Release Modules.sln"
+    cmd /c "$($vspath) /build Release Modules.sln" | Out-File $($outfile) -Append;
 
     #=========================================================
-    # CX - building
+    # test request sending
     #=========================================================
     Progress-Out "Sending test request..."
     Set-Location $($testdir);
-    cmd /c "RELEASE_TEST.BAT $($user) $($version) $($ttid) $($comment)" | Out-File $($outfile) -Append;
+    $testcmd = "RELEASE_TEST.BAT $($user) $($version) $($ttid) $($comment) $($vspath)";
+    Progress-Out "$($testcmd)"
+    cmd /c "$($testcmd)" | Out-File $($outfile) -Append;
+    $svc.FinishBuild($request.ID);
+    stop-computer;
 }
 
 while ($true)
