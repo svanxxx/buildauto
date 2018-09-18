@@ -36,6 +36,16 @@ function Build-Version()
     Progress-Out "getting code from git..."
     Set-Location $($workdir);
     cmd /c "git reset --hard" | Out-File $($outfile) -Append;
+    cmd /c "git checkout master" | Out-File $($outfile) -Append;
+    cmd /c "git reset --hard" | Out-File $($outfile) -Append;
+    $branches = git branch
+    For ($i=0; $i -lt $branches.Length; $i++) 
+    {
+        if ($branches[$i].Trim() -ne "* master")
+        {
+            git branch -D "$($branches[$i].Trim())"
+        }
+    }
     cmd /c "git fetch --all" | Out-File $($outfile) -Append;
     cmd /c "git checkout $($branch)" | Out-File $($outfile) -Append;
     cmd /c "git pull origin" | Out-File $($outfile) -Append;
@@ -43,6 +53,7 @@ function Build-Version()
     #=========================================================
     # FIP - building
     #=========================================================
+
     "#define _BSTUserName _T("".$($user)"")" | Out-File $($bstfile)
 
     $buildcommand = "BuildConsole.exe ""$($workdir)Projects.32\All.sln"" /rebuild /cfg=""Release|Mixed Platforms"" /NOLOGO /OUT=""$($fipoutfile)"""
