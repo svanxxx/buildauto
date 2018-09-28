@@ -123,6 +123,6 @@ Do
            }
        }
     }
-    Get-Date -Format HH:MM:ss
+    Get-Date -Format HH:mm:ss
     start-sleep -seconds 5
 } While ($TRUE)
