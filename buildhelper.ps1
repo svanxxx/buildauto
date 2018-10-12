@@ -1,4 +1,4 @@
-﻿$workdir = "d:\v8\";
+﻿$workdir = "Y:\";
 $builddir = "$($workdir)Projects.32\";
 $testdir = "$($workdir).Ext\";
 $bstfile = "$($workdir)Common\BSTUserName.h"
