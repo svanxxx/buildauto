@@ -54,13 +54,15 @@ function Build-Version()
     # FIP - building
     #=========================================================
 
-    "#define _BSTUserName _T("".$($user)"")" | Out-File $($bstfile)
+    "#define _BSTUserName _T("".$($user)"")" | Out-File $($bstfile) -Encoding ascii
 
     $buildcommand = "BuildConsole.exe ""$($workdir)Projects.32\All.sln"" /rebuild /cfg=""Release|Mixed Platforms"" /NOLOGO /OUT=""$($fipoutfile)"""
     Progress-Out $buildcommand
     Progress-Out "building fieldpro..."
 
     cmd /c "$($buildcommand)"
+
+    #$svc.FailBuild($request.ID);
 
     #=========================================================
     # CX - building
