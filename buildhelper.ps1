@@ -63,9 +63,14 @@ function Build-Version()
 
     cmd /c "$($buildcommand)"
 
-    $buildresult = Get-Content $($fipoutfile) | Select-String -Pattern '========== Build:'
-    $buildresults = $buildresult -split ","
-    $errors = $buildresults[1].Trim() -replace "[^0-9]"
+    #$buildresult = Get-Content $($fipoutfile) | Select-String -Pattern '========== Build:'
+    #$buildresults = $buildresult -split ","
+    #$errors = $buildresults[1].Trim() -replace "[^0-9]"
+    $errors = 0
+    if (Get-Content $($fipoutfile) | Select-String -Pattern "Build FAILED.")
+    {
+        $errors = 1
+    }
     if ($errors -gt 0)
     {
         Copy-Item $fipoutfile -Destination "$($pathtolog)$($request.ID).log"
