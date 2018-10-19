@@ -75,6 +75,8 @@ function Build-Version()
     {
         Copy-Item $fipoutfile -Destination "$($pathtolog)$($request.ID).log"
         $svc.FailBuild($request.ID);
+        stop-computer;
+        exit;
     }
 
     #=========================================================
@@ -104,6 +106,7 @@ function Build-Version()
     Progress-Out "$($testcmd)"
     cmd /c "$($testcmd)" | Out-File $($outfile) -Append;
     $svc.FinishBuild($request.ID);
+    Copy-Item $outfile -Destination "$($pathtolog)$($request.ID).log"
     stop-computer;
 }
 
