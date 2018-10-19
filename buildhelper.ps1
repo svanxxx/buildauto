@@ -24,6 +24,7 @@ function Build-Version()
     $version = "V8E";
     $ttid = """$($branch) $($request.SUMMARY)""";
     $comment = """$($request.COMM)""";
+    $pathtolog = $svc.geBuildLogDir()
 
     "buildheler:" | Out-File $($outfile);
     Progress-Out "Starting build..."
@@ -62,7 +63,14 @@ function Build-Version()
 
     cmd /c "$($buildcommand)"
 
-    #$svc.FailBuild($request.ID);
+    $buildresult = Get-Content $($fipoutfile) | Select-String -Pattern '========== Build:'
+    $buildresults = $buildresult -split ","
+    $errors = $buildresults[1].Trim() -replace "[^0-9]"
+    if ($errors -gt 0)
+    {
+        Copy-Item $fipoutfile -Destination "$($pathtolog)$($request.ID).log"
+        $svc.FailBuild($request.ID);
+    }
 
     #=========================================================
     # CX - building
