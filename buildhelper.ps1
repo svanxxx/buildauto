@@ -73,9 +73,6 @@ function Build-Version()
 
     cmd /c "$($buildcommand)"
 
-    #$buildresult = Get-Content $($fipoutfile) | Select-String -Pattern '========== Build:'
-    #$buildresults = $buildresult -split ","
-    #$errors = $buildresults[1].Trim() -replace "[^0-9]"
     $errors = 0
     if (Get-Content $($fipoutfile) | Select-String -Pattern "Build FAILED.")
     {
@@ -106,6 +103,18 @@ function Build-Version()
     cmd /c "$($vspath) /build Release Modules.sln"
     cmd /c "$($vspath) /build Release Modules.sln"
     cmd /c "$($vspath) /build Release Modules.sln" | Out-File $($outfile) -Append;
+
+    $buildresult = Get-Content $($outfile) | Select-String -Pattern '========== Build:'
+    $buildresults = $buildresult -split ","
+    $errors = $buildresults[1].Trim() -replace "[^0-9]"
+    $errors = 0
+    if ($errors -gt 0)
+    {
+        Copy-Item $outfile -Destination "$($pathtolog)$($request.ID).log"
+        $svc.FailBuild($request.ID);
+        stop-computer;
+        exit;
+    }
 
     #=========================================================
     # test request sending
