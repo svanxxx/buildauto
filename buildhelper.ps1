@@ -19,6 +19,16 @@ function Progress-Out([string]$txt)
 
 function Build-Version()
 {
+    #=========================================================
+    # clean up
+    #=========================================================
+    $loc = Get-Location
+    Set-Location $temp
+    Remove-Item * -recurse -force
+    Set-Location $loc
+    #=========================================================
+    # init
+    #=========================================================
     $branch = "TT$($request.TTID)";
     $user = "$($request.USER)";
     $version = "V8E";
