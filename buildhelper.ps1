@@ -5,6 +5,7 @@ $bstfile = "$($workdir)Common\BSTUserName.h"
 $temp = [System.IO.Path]::GetTempPath();
 $outfile = "$($temp)buildoutput.log";
 $fipoutfile = "$($temp)fipbuildoutput.log";
+$cxoutfile = "$($temp)cxbuildoutput.log";
 $svc = New-WebServiceProxy –Uri ‘http://192.168.0.1/taskmanagerbeta/trservice.asmx?WSDL’
 #$svc = New-WebServiceProxy –Uri ‘http://localhost:8311/TRService.asmx?WSDL’
 $request = $null;
@@ -102,15 +103,15 @@ function Build-Version()
 
     cmd /c "$($vspath) /build Release Modules.sln"
     cmd /c "$($vspath) /build Release Modules.sln"
-    cmd /c "$($vspath) /build Release Modules.sln" | Out-File $($outfile) -Append;
+    cmd /c "$($vspath) /build Release Modules.sln" | Out-File $($cxoutfile) -Append;
 
-    $buildresult = Get-Content $($outfile) | Select-String -Pattern '========== Build:'
+    $buildresult = Get-Content $($cxoutfile) | Select-String -Pattern '========== Build:'
     $buildresults = $buildresult -split ","
     $errors = $buildresults[1].Trim() -replace "[^0-9]"
     $errors = 0
     if ($errors -gt 0)
     {
-        Copy-Item $outfile -Destination "$($pathtolog)$($request.ID).log"
+        Copy-Item $cxoutfile -Destination "$($pathtolog)$($request.ID).log"
         $svc.FailBuild($request.ID);
         stop-computer;
         exit;
