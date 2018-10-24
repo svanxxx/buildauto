@@ -23,10 +23,13 @@ function Build-Version()
     #=========================================================
     # clean up
     #=========================================================
+    Progress-Out "Temp folders cleanup..."
     $loc = Get-Location
     Set-Location $temp
     Remove-Item * -recurse -force
     Set-Location $loc
+    Progress-Out "V disk obj files folders cleanup..."
+    Remove-Item –path V:\* -Force -Recurse -Confirm:$false
     #=========================================================
     # init
     #=========================================================
