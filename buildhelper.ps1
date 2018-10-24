@@ -127,6 +127,16 @@ function Build-Version()
     $testcmd = "RELEASE_TEST.BAT $($user) $($version) $($ttid) $($comment) $($vspath)";
     Progress-Out "$($testcmd)"
     cmd /c "$($testcmd)" | Out-File $($outfile) -Append;
+
+    $fileerror = Select-String -Path $outfile -Pattern "Error:"
+    if ($fileerror -ne $null)
+    {
+        Copy-Item $outfile -Destination "$($pathtolog)$($request.ID).log"
+        $svc.FailBuild($request.ID);
+        stop-computer;
+        exit;
+    }
+
     $svc.FinishBuild($request.ID);
     Copy-Item $outfile -Destination "$($pathtolog)$($request.ID).log"
     stop-computer;
