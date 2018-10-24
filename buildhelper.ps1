@@ -108,7 +108,6 @@ function Build-Version()
     $buildresult = Get-Content $($cxoutfile) | Select-String -Pattern '========== Build:'
     $buildresults = $buildresult -split ","
     $errors = $buildresults[1].Trim() -replace "[^0-9]"
-    $errors = 0
     if ($errors -gt 0)
     {
         Copy-Item $cxoutfile -Destination "$($pathtolog)$($request.ID).log"
