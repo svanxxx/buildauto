@@ -137,6 +137,8 @@ function Build-Version()
         exit;
     }
 
+    Progress-Out "release test returned code: $($?)"
+
     $svc.FinishBuild($request.ID);
     Copy-Item $outfile -Destination "$($pathtolog)$($request.ID).log"
     stop-computer;
