@@ -38,10 +38,8 @@ function Build-Version()
     $branch = "TT$($request.TTID)";
     $user = "$($request.USER)";
     $version = "V8E";
-    $ttid = """$($branch) $($request.SUMMARY)""";
-    $ttid = $ttid.Replace("""", "'");
-    $comment = """$($request.COMM)""";
-    $comment = $comment.Replace("""", "'");
+    $ttid = """" + $branch + " " + $request.SUMMARY.Replace("""", "'") + """";
+    $comment = """" + $request.COMM.Replace("""", "'") + """";
     $pathtolog = $svc.geBuildLogDir()
 
     "buildheler:" | Out-File $($outfile);
