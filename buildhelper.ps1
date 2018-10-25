@@ -30,8 +30,6 @@ function Build-Version()
     Set-Location $loc
     Progress-Out "V disk obj files folders cleanup..."
     Remove-Item –path V:\* -Force -Recurse -Confirm:$false
-    Progress-Out "Preparing Inc-Build..."
-    cmd /c "\\192.168.0.1\Installs\Work\incprep.bat"
     #=========================================================
     # init
     #=========================================================
@@ -45,6 +43,12 @@ function Build-Version()
     "buildheler:" | Out-File $($outfile);
     Progress-Out "Starting build..."
     Progress-Out "$($ttid)"
+
+    if ($svc.IsBuildCancelled($request.ID))
+    {
+        stop-computer;
+        exit;
+    }
 
     #=========================================================
     # GIT - getting code
@@ -67,6 +71,12 @@ function Build-Version()
     cmd /c "git checkout $($branch)" | Out-File $($outfile) -Append;
     cmd /c "git pull origin" | Out-File $($outfile) -Append;
 
+    if ($svc.IsBuildCancelled($request.ID))
+    {
+        stop-computer;
+        exit;
+    }
+
     #=========================================================
     # FIP - building
     #=========================================================
@@ -88,6 +98,12 @@ function Build-Version()
     {
         Copy-Item $fipoutfile -Destination "$($pathtolog)$($request.ID).log"
         $svc.FailBuild($request.ID);
+        stop-computer;
+        exit;
+    }
+
+    if ($svc.IsBuildCancelled($request.ID))
+    {
         stop-computer;
         exit;
     }
@@ -121,6 +137,12 @@ function Build-Version()
         exit;
     }
 
+    if ($svc.IsBuildCancelled($request.ID))
+    {
+        stop-computer;
+        exit;
+    }
+
     #=========================================================
     # test request sending
     #=========================================================
@@ -130,7 +152,7 @@ function Build-Version()
     Progress-Out "$($testcmd)"
     cmd /c "$($testcmd)" | Out-File $($outfile) -Append;
 
-    $fileerror = Select-String -Path $outfile -Pattern "Error:"
+    $fileerror = Select-String -Path $outfile -Pattern "^Error:" #line starts with 'error:'
     if ($fileerror -ne $null)
     {
         Copy-Item $outfile -Destination "$($pathtolog)$($request.ID).log"
@@ -148,6 +170,8 @@ function Build-Version()
 
 while ($true)
 {
+    cmd /c "\\192.168.0.1\Installs\Work\incprep.bat"
+
     $request = $svc.getBuildRequest($env:computername.ToUpper())
     if (!($request.TTID -eq ""))
     {
