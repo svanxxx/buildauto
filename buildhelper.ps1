@@ -30,6 +30,8 @@ function Build-Version()
     Set-Location $loc
     Progress-Out "V disk obj files folders cleanup..."
     Remove-Item –path V:\* -Force -Recurse -Confirm:$false
+    Progress-Out "Preparing Inc-Build..."
+    cmd /c "\\192.168.0.1\Installs\Work\incprep.bat"
     #=========================================================
     # init
     #=========================================================
@@ -37,7 +39,9 @@ function Build-Version()
     $user = "$($request.USER)";
     $version = "V8E";
     $ttid = """$($branch) $($request.SUMMARY)""";
+    $ttid = $ttid.Replace("""", "'");
     $comment = """$($request.COMM)""";
+    $comment = $comment.Replace("""", "'");
     $pathtolog = $svc.geBuildLogDir()
 
     "buildheler:" | Out-File $($outfile);
