@@ -161,7 +161,7 @@ function Build-Version()
         exit;
     }
 
-    Progress-Out "release test returned code: $($?)"
+    Progress-Out "Release test was successfully sent. Click to see details."
 
     $svc.FinishBuild($request.ID);
     Copy-Item $outfile -Destination "$($pathtolog)$($request.ID).log"
