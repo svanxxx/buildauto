@@ -19,4 +19,5 @@ To resolve:
 From:https://stackoverflow.com/questions/14952833/get-wmiobject-win32-process-computername-gets-error-access-denied-code-0x8
 
 For building agents:
-use drives.reg (modified if needed for correct paths) to allow buildhelper working correctly
+1. use drives.reg (modified if needed for correct paths) to allow buildhelper working correctly
+2. use buildcontrol.xml as startup task
