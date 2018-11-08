@@ -13,9 +13,11 @@ $vspath = """C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\dev
 
 function Progress-Out([string]$txt)
 {
-    $txt | Out-File $($outfile) -Append;
+    $stamp = Get-Date -Format "HH:mm:ss"
+    $out = $stamp+": "+$txt
+    $out | Out-File $($outfile) -Append;
     $svc.CommentBuild($request.ID, $txt);
-    echo $txt;
+    echo $out;
 }
 
 function Build-Version()
