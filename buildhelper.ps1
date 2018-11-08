@@ -168,10 +168,9 @@ function Build-Version()
     stop-computer;
 }
 
+cmd /c "\\192.168.0.1\Installs\Work\incprep.bat"
 while ($true)
 {
-    cmd /c "\\192.168.0.1\Installs\Work\incprep.bat"
-
     $request = $svc.getBuildRequest($env:computername.ToUpper())
     if (!($request.TTID -eq ""))
     {
