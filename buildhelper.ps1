@@ -178,7 +178,7 @@ cmd /c "\\192.168.0.1\Installs\Work\incprep.bat"
 while ($true)
 {
     $request = $svc.getBuildRequest($env:computername.ToUpper())
-    if (!($request.TTID -eq ""))
+    if ($request.TTID -ne 0)
     {
         Build-Version
     }
