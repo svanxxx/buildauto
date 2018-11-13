@@ -1,6 +1,7 @@
 ﻿$workdir = "Y:\";
 $builddir = "$($workdir)Projects.32\";
 $testdir = "$($workdir).Ext\";
+$bstinfo = "$($workdir)Release.exe\BSTRequestInfo.txt";
 $bstfile = "$($workdir)Common\BSTUserName.h"
 $temp = [System.IO.Path]::GetTempPath();
 $outfile = "$($temp)buildoutput.log";
@@ -35,7 +36,7 @@ function Build-Version()
     #=========================================================
     # init
     #=========================================================
-    $branch = "TT$($request.TTID)";
+    $branch = "$($request.BRANCH)";
     $user = "$($request.USER)";
     $version = "V8E";
     $ttid = """" + $branch + " " + $request.SUMMARY.Replace("""", "'") + """";
@@ -165,7 +166,10 @@ function Build-Version()
 
     Progress-Out "Release test was successfully sent. Click to see details."
 
-    $svc.FinishBuild($request.ID);
+    $verguid = Get-Content -Path $bstinfo
+    $verguid = $verguid[0]
+
+    $svc.FinishBuild($request.ID, $verguid);
     Copy-Item $outfile -Destination "$($pathtolog)$($request.ID).log"
     stop-computer;
 }
