@@ -39,7 +39,7 @@ function Build-Version()
     $branch = "$($request.BRANCH)";
     $user = "$($request.USER)";
     $version = "V8E";
-    $ttid = """" + $branch + " " + $request.SUMMARY.Replace("""", "'") + """";
+    $ttid = """" + "TT$($request.TTID)" + " " + $request.SUMMARY.Replace("""", "'") + """";
     $comment = """" + $request.COMM.Replace("""", "'") + """";
     $pathtolog = $svc.geBuildLogDir()
 
@@ -169,7 +169,7 @@ function Build-Version()
     $verguid = Get-Content -Path $bstinfo
     $verguid = $verguid[0]
 
-    $svc.FinishBuild($request.ID, $verguid);
+    $svc.FinishBuild($request.ID, "$($verguid)");
     Copy-Item $outfile -Destination "$($pathtolog)$($request.ID).log"
     stop-computer;
 }
