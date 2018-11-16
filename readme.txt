@@ -4,6 +4,9 @@ Set-ExecutionPolicy RemoteSigned
 Set-ExecutionPolicy Unrestricted
 Set-ExecutionPolicy bypass
 
+use drives.reg (may be modified) to setup required drives for builds
+
+
 Known Issues:
 “get-wmiobject win32_process -computername” gets error “Access denied , code 0x80070005”
 To resolve:
