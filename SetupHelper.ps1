@@ -20,15 +20,50 @@ $pagefile.InitialSize = 2048;
 $pagefile.MaximumSize = 2048;
 $pagefile.Put();
 
+Stop-Service "wuauserv"
+Set-Service "wuauserv" -StartMode Disabled
+Stop-Service "MpsSvc"
+Set-Service "MpsSvc" -StartMode Disabled
+Stop-Service "WinDefend"
+Set-Service "WinDefend" -StartMode Disabled
+Stop-Service "wscsvc"
+Set-Service "wscsvc" -StartMode Disabled
+Stop-Service "Themes"
+Set-Service "Themes" -StartMode Disabled
+Stop-Service "AudioSrv"
+Set-Service "AudioSrv" -StartMode Disabled
+Stop-Service "AudioEndpointBuilder"
+Set-Service "AudioEndpointBuilder" -StartMode Disabled
+Stop-Service "WSearch"
+Set-Service "WSearch" -StartMode Disabled
+
+Set-TimeZone -Name "Belarus Standard Time"
+
+dism /online /Disable-Feature /NoRestart /FeatureName:InboxGames
+dism /online /Disable-Feature /NoRestart /FeatureName:"More Games"
+dism /online /Disable-Feature /NoRestart /FeatureName:"Internet Games"
+dism /online /Disable-Feature /NoRestart /FeatureName:"Internet-Explorer-Optional-amd64"
+dism /online /Disable-Feature /NoRestart /FeatureName:"MediaPlayback"
+dism /online /Disable-Feature /NoRestart /FeatureName:"WindowsMediaPlayer"
+dism /online /Disable-Feature /NoRestart /FeatureName:"MediaCenter"
+dism /online /Disable-Feature /NoRestart /FeatureName:"TabletPCOC"
+dism /online /Disable-Feature /NoRestart /FeatureName:"WindowsGadgetPlatform"
+dism /online /Disable-Feature /NoRestart /FeatureName:"SearchEngine-Client-Package"
+dism /online /Disable-Feature /NoRestart /FeatureName:"Xps-Foundation-Xps-Viewer"
+dism /online /Disable-Feature /NoRestart /FeatureName:"Printing-XPSServices-Features"
+
+New-Item -Path "HKCU:\Software\Policies\Microsoft\Windows\Explorer" | Out-Null
+Set-ItemProperty -Path "HKCU:\Software\Policies\Microsoft\Windows\Explorer" -Name "DisableNotificationCenter" -Type DWord -Value 1
+
 Set-Location c:\
 git clone \\192.168.0.1\git\v8 V8
 
 Set-Location D:\
 New-Item  -Name v8.release.obj -ItemType directory
 New-Item  -Name v8.debug.obj -ItemType directory
-New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\DOS Devices" -Name "U:" -Value "\\??\\D:\\v8.debug.obj" -Force | Out-Null
-New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\DOS Devices" -Name "V:" -Value "\\??\\D:\\v8.release.obj" -Force | Out-Null
-New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\DOS Devices" -Name "Y:" -Value "\\??\\C:\\v8" -Force | Out-Null
+New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\DOS Devices" -Name "U:" -Value "\??\D:\v8.debug.obj" -Force | Out-Null
+New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\DOS Devices" -Name "V:" -Value "\??\D:\v8.release.obj" -Force | Out-Null
+New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\DOS Devices" -Name "Y:" -Value "\??\C:\v8" -Force | Out-Null
 
 Set-Location 'C:\Program Files (x86)\'
 New-Item  -Name Farpoints -ItemType directory

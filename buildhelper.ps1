@@ -93,9 +93,18 @@ function Build-Version()
     cmd /c "$($buildcommand)"
 
     $errors = 0
-    if (Get-Content $($fipoutfile) | Select-String -Pattern "Build FAILED.")
+    $filecontent = Get-Content $($fipoutfile)
+    if ($filecontent | Select-String -Pattern "Build FAILED.")
     {
-        $errors = 1
+        if ($filecontent | Select-String -Pattern "TRACKER : error TRK0002")
+        {
+            Progress-Out "re - building fieldpro..."
+            cmd /c "$($buildcommand)"
+        }
+        if ($filecontent | Select-String -Pattern "Build FAILED.")
+        {
+            $errors = 1
+        }
     }
     if ($errors -gt 0)
     {
