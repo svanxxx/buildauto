@@ -2,6 +2,8 @@
 $builddir = "$($workdir)Projects.32\";
 $buildLibdir = "$($workdir)Release.lib\";
 $buildExedir = "$($workdir)Release.exe\";
+$mxbuildLibdir = "$($workdir)Modules.32\Release.lib\";
+$mxbuildExedir = "$($workdir)Modules.32\Release.exe\";
 $testdir = "$($workdir).Ext\";
 $bstinfo = "$($workdir)Release.exe\BSTRequestInfo.txt";
 $bstfile = "$($workdir)Common\BSTUserName.h"
@@ -38,6 +40,8 @@ function Build-Version()
     Progress-Out "Lib files cleanup..."
     Remove-Item –path "$($buildLibdir)*" -Force -Recurse -Confirm:$false
     Remove-Item –path "$($buildExedir)*" -Force -Recurse -Confirm:$false
+    Remove-Item –path "$($mxbuildLibdir)*" -Force -Recurse -Confirm:$false
+    Remove-Item –path "$($mxbuildExedir)*" -Force -Recurse -Confirm:$false
     #=========================================================
     # init
     #=========================================================
