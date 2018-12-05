@@ -1,5 +1,7 @@
 ﻿$workdir = "Y:\";
 $builddir = "$($workdir)Projects.32\";
+$buildLibdir = "$($workdir)Release.lib\";
+$buildExedir = "$($workdir)Release.exe\";
 $testdir = "$($workdir).Ext\";
 $bstinfo = "$($workdir)Release.exe\BSTRequestInfo.txt";
 $bstfile = "$($workdir)Common\BSTUserName.h"
@@ -33,6 +35,9 @@ function Build-Version()
     Set-Location $loc
     Progress-Out "V disk obj files folders cleanup..."
     Remove-Item –path V:\* -Force -Recurse -Confirm:$false
+    Progress-Out "Lib files cleanup..."
+    Remove-Item –path "$($buildLibdir)*" -Force -Recurse -Confirm:$false
+    Remove-Item –path "$($buildExedir)*" -Force -Recurse -Confirm:$false
     #=========================================================
     # init
     #=========================================================
