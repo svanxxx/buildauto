@@ -195,6 +195,8 @@ function Build-Version()
 cmd /c "\\192.168.0.1\Installs\Work\incprep.bat"
 while ($true)
 {
+    while (-not (test-connection 192.168.0.1 -quiet)){echo "waiting for connecton..."}
+
     $request = $svc.getBuildRequest($env:computername.ToUpper())
     if ($request.TTID -ne 0)
     {
