@@ -16,57 +16,32 @@ $svc = New-WebServiceProxy –Uri ‘http://192.168.0.1/taskmanagerbeta/trservic
 $request = $null;
 $vspath = """C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.com"""
 
-function Progress-Out([string]$txt)
+function Write-State([string]$txt)
 {
     $stamp = Get-Date -Format "HH:mm:ss"
     $out = $stamp+": "+$txt
     $out | Out-File $($outfile) -Append;
     $svc.CommentBuild($request.ID, $txt);
-    echo $out;
+    Write-Host $out;
 }
-
-function Build-Version()
+function Invoke-Cleanup()
 {
-    #=========================================================
-    # clean up
-    #=========================================================
-    Progress-Out "Temp folders cleanup..."
+    Write-State "Temp Folders Cleanup..."
     $loc = Get-Location
     Set-Location $temp
     Remove-Item * -recurse -force
     Set-Location $loc
-    Progress-Out "V disk obj files folders cleanup..."
+    Write-State "V disk obj files folders cleanup..."
     Remove-Item –path V:\* -Force -Recurse -Confirm:$false
-    Progress-Out "Lib files cleanup..."
+    Write-State "Lib files cleanup..."
     Remove-Item –path "$($buildLibdir)*" -Force -Recurse -Confirm:$false
     Remove-Item –path "$($buildExedir)*" -Force -Recurse -Confirm:$false
     Remove-Item –path "$($mxbuildLibdir)*" -Force -Recurse -Confirm:$false
     Remove-Item –path "$($mxbuildExedir)*" -Force -Recurse -Confirm:$false
-    #=========================================================
-    # init
-    #=========================================================
-    $branch = "$($request.BRANCH)";
-    $user = "$($request.USER)";
-    $version = "V8E";
-    $ttid = """" + "TT$($request.TTID)" + " " + $request.SUMMARY.Replace("""", "'") + """";
-    $comment = """" + $request.COMM.Replace("""", "'") + """";
-    $pathtolog = $svc.geBuildLogDir()
-
-    "buildheler:" | Out-File $($outfile);
-    Progress-Out "Starting build..."
-    Progress-Out "$($ttid)"
-
-    if ($svc.IsBuildCancelled($request.ID))
-    {
-        stop-computer;
-        exit;
-    }
-
-    #=========================================================
-    # GIT - getting code
-    #=========================================================
-    Progress-Out $branch
-    Progress-Out "getting code from git..."
+}
+function Invoke-Code-Synch([string]$branch)
+{
+    Write-State "Pull Code ($($branch)) From Git..."
     Set-Location $($workdir);
     cmd /c "git reset --hard" | Out-File $($outfile) -Append;
     cmd /c "git checkout master" | Out-File $($outfile) -Append;
@@ -82,7 +57,38 @@ function Build-Version()
     cmd /c "git fetch --all" | Out-File $($outfile) -Append;
     cmd /c "git checkout $($branch)" | Out-File $($outfile) -Append;
     cmd /c "git pull origin" | Out-File $($outfile) -Append;
+}
+function Invoke-CodeBuilder()
+{
+    Invoke-Cleanup
+    if ($svc.IsBuildCancelled($request.ID))
+    {
+        stop-computer;
+        exit;
+    }
+    #=========================================================
+    # init
+    #=========================================================
+    $branch = "$($request.BRANCH)"
+    $user = "$($request.USER)"
+    $version = "V8E"
+    $ttid = """" + "TT$($request.TTID)" + " " + $request.SUMMARY.Replace("""", "'") + """"
+    $comment = """" + $request.COMM.Replace("""", "'") + """"
+    $pathtolog = $svc.geBuildLogDir()
 
+    "Build Heler:" | Out-File "$($outfile)"
+    Write-State "Starting Build For $($ttid)..."
+
+    if ($svc.IsBuildCancelled($request.ID))
+    {
+        stop-computer;
+        exit;
+    }
+
+    #=========================================================
+    # GIT - getting code
+    #=========================================================
+    Invoke-Code-Synch($branch)
     if ($svc.IsBuildCancelled($request.ID))
     {
         stop-computer;
@@ -96,8 +102,8 @@ function Build-Version()
     "#define _BSTUserName _T("".$($user)"")" | Out-File $($bstfile) -Encoding ascii
 
     $buildcommand = "BuildConsole.exe ""$($workdir)Projects.32\All.sln"" /rebuild /cfg=""Release|Mixed Platforms"" /NOLOGO /OUT=""$($fipoutfile)"""
-    Progress-Out $buildcommand
-    Progress-Out "building fieldpro..."
+    Write-State $buildcommand
+    Write-State "building fieldpro..."
 
     cmd /c "$($buildcommand)"
 
@@ -107,7 +113,7 @@ function Build-Version()
     {
         if ($filecontent | Select-String -Pattern "TRACKER : error TRK0002")
         {
-            Progress-Out "re - building fieldpro..."
+            Write-State "re - building fieldpro..."
             cmd /c "$($buildcommand)"
         }
         if ($filecontent | Select-String -Pattern "Build FAILED.")
@@ -132,7 +138,7 @@ function Build-Version()
     #=========================================================
     # CX - building
     #=========================================================
-    Progress-Out "building CX..."
+    Write-State "building CX..."
     Set-Location $($builddir);
     cmd /c "$($vspath) /clean Release Modules.sln"
 
@@ -167,14 +173,14 @@ function Build-Version()
     #=========================================================
     # test request sending
     #=========================================================
-    Progress-Out "Sending test request..."
+    Write-State "Sending test request..."
     Set-Location $($testdir);
     $testcmd = "RELEASE_TEST.BAT $($user) $($version) $($ttid) $($comment) $($vspath)";
-    Progress-Out "$($testcmd)"
+    Write-State "$($testcmd)"
     cmd /c "$($testcmd)" | Out-File $($outfile) -Append;
 
     $fileerror = Select-String -Path $outfile -Pattern "^Error:" #line starts with 'error:'
-    if ($fileerror -ne $null)
+    if ($null -ne $fileerror)
     {
         Copy-Item $outfile -Destination "$($pathtolog)$($request.ID).log"
         $svc.FailBuild($request.ID);
@@ -182,7 +188,7 @@ function Build-Version()
         exit;
     }
 
-    Progress-Out "Release test was successfully sent. Click to see details."
+    Write-State "Release test was successfully sent. Click to see details."
 
     $verguid = Get-Content -Path $bstinfo
     $verguid = $verguid[0]
@@ -195,13 +201,13 @@ function Build-Version()
 cmd /c "\\192.168.0.1\Installs\Work\incprep.bat"
 while ($true)
 {
-    while (-not (test-connection 192.168.0.1 -quiet)){echo "waiting for connecton..."}
+    while (-not (test-connection 192.168.0.1 -quiet)){Write-Output "waiting for connecton..."}
 
     $request = $svc.getBuildRequest($env:computername.ToUpper())
     if ($request.TTID -ne 0)
     {
-        Build-Version
+        Invoke-CodeBuilder
     }
-    echo "$(Get-Date)"
-    Start-Sleep -s 20
+    Write-Host "$(Get-Date)"
+    Start-Sleep -Seconds 1
 }
