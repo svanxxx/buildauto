@@ -204,7 +204,7 @@ while ($true)
     while (-not (test-connection 192.168.0.1 -quiet)){Write-Output "waiting for connecton..."}
 
     $request = $svc.getBuildRequest($env:computername.ToUpper())
-    if ($request.TTID -ne 0)
+    if ($request.TTID -ne 0 -and -not [string]::IsNullOrEmpty($request.BRANCH))
     {
         Invoke-CodeBuilder
     }
