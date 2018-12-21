@@ -63,6 +63,7 @@ function Invoke-CodeBuilder()
     Invoke-Cleanup
     if ($svc.IsBuildCancelled($request.ID))
     {
+        Write-State "Build Cancelled..."
         stop-computer;
         exit;
     }
@@ -81,6 +82,7 @@ function Invoke-CodeBuilder()
 
     if ($svc.IsBuildCancelled($request.ID))
     {
+        Write-State "Build Cancelled..."
         stop-computer;
         exit;
     }
@@ -91,6 +93,7 @@ function Invoke-CodeBuilder()
     Invoke-Code-Synch($branch)
     if ($svc.IsBuildCancelled($request.ID))
     {
+        Write-State "Build Cancelled..."
         stop-computer;
         exit;
     }
@@ -131,6 +134,7 @@ function Invoke-CodeBuilder()
 
     if ($svc.IsBuildCancelled($request.ID))
     {
+        Write-State "Build Cancelled..."
         stop-computer;
         exit;
     }
@@ -166,6 +170,7 @@ function Invoke-CodeBuilder()
 
     if ($svc.IsBuildCancelled($request.ID))
     {
+        Write-State "Build Cancelled..."
         stop-computer;
         exit;
     }
