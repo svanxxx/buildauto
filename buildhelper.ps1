@@ -38,6 +38,8 @@ function Invoke-Cleanup()
     Remove-Item –path "$($buildExedir)*" -Force -Recurse -Confirm:$false
     Remove-Item –path "$($mxbuildLibdir)*" -Force -Recurse -Confirm:$false
     Remove-Item –path "$($mxbuildExedir)*" -Force -Recurse -Confirm:$false
+    Write-State "IncrediBuild cleanup..."
+    Remove-Item –path "C:\Program Files (x86)\Xoreax\IncrediBuild\temp\*" -Force -Recurse -Confirm:$false
 }
 function Invoke-Code-Synch([string]$branch)
 {
