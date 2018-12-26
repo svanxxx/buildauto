@@ -57,6 +57,48 @@ function Invoke-Code-Synch([string]$branch)
     cmd /c "git fetch --all" | Out-File $($outfile) -Append;
     cmd /c "git checkout $($branch)" | Out-File $($outfile) -Append;
     cmd /c "git pull origin" | Out-File $($outfile) -Append;
+    if ($svc.IsBuildCancelled($request.ID))
+    {
+        Write-State "Build Cancelled..."
+        stop-computer
+        exit
+    }
+}
+function Invoke-CodeCompilation([string]$solution, [string]$solutionOutfile, [string]$pathtolog)
+{
+    $buildcommand = "BuildConsole.exe ""$($solution)"" /rebuild /cfg=""Release|Mixed Platforms"" /NOLOGO /OUT=""$($solutionOutfile)"""
+    Write-State "Building code $($solutionOutfile)..."
+
+    cmd /c "$($buildcommand)"
+
+    $errors = 0
+    $filecontent = Get-Content $($solutionOutfile)
+    if ($filecontent | Select-String -Pattern "Build FAILED.")
+    {
+        if ($filecontent | Select-String -Pattern "TRACKER : error TRK0002")
+        {
+            Write-State "re - building code after TRK0002..."
+            cmd /c "$($buildcommand)"
+        }
+        if ($filecontent | Select-String -Pattern "Build FAILED.")
+        {
+            $errors = 1
+        }
+    }
+    if ($errors -gt 0)
+    {
+        Copy-Item $solutionOutfile -Destination "$($pathtolog)$($request.ID).log"
+        $svc.FailBuild($request.ID)
+        stop-computer
+        exit
+    }
+
+    if ($svc.IsBuildCancelled($request.ID))
+    {
+        Write-State "Build Cancelled..."
+        stop-computer
+        exit
+    }
 }
 function Invoke-CodeBuilder()
 {
@@ -87,93 +129,13 @@ function Invoke-CodeBuilder()
         exit;
     }
 
-    #=========================================================
-    # GIT - getting code
-    #=========================================================
     Invoke-Code-Synch($branch)
-    if ($svc.IsBuildCancelled($request.ID))
-    {
-        Write-State "Build Cancelled..."
-        stop-computer;
-        exit;
-    }
-
-    #=========================================================
-    # FIP - building
-    #=========================================================
 
     "#define _BSTUserName _T("".$($user)"")" | Out-File $($bstfile) -Encoding ascii
 
-    $buildcommand = "BuildConsole.exe ""$($workdir)Projects.32\All.sln"" /rebuild /cfg=""Release|Mixed Platforms"" /NOLOGO /OUT=""$($fipoutfile)"""
-    Write-State $buildcommand
-    Write-State "building fieldpro..."
+    Invoke-CodeCompilation("$($workdir)Projects.32\All.sln", $fipoutfile, $pathtolog)
 
-    cmd /c "$($buildcommand)"
-
-    $errors = 0
-    $filecontent = Get-Content $($fipoutfile)
-    if ($filecontent | Select-String -Pattern "Build FAILED.")
-    {
-        if ($filecontent | Select-String -Pattern "TRACKER : error TRK0002")
-        {
-            Write-State "re - building fieldpro..."
-            cmd /c "$($buildcommand)"
-        }
-        if ($filecontent | Select-String -Pattern "Build FAILED.")
-        {
-            $errors = 1
-        }
-    }
-    if ($errors -gt 0)
-    {
-        Copy-Item $fipoutfile -Destination "$($pathtolog)$($request.ID).log"
-        $svc.FailBuild($request.ID);
-        stop-computer;
-        exit;
-    }
-
-    if ($svc.IsBuildCancelled($request.ID))
-    {
-        Write-State "Build Cancelled..."
-        stop-computer;
-        exit;
-    }
-
-    #=========================================================
-    # CX - building
-    #=========================================================
-    Write-State "building CX..."
-    Set-Location $($builddir);
-    cmd /c "$($vspath) /clean Release Modules.sln"
-
-    $srclib = "$($workdir)Modules.32\Release.lib\Src.lib"
-    $srclib0 = "$($workdir)Modules.32\Release.lib\SRC\Src.lib"
-
-    if(![System.IO.File]::Exists($srclib)){
-        Copy-Item -Path $srclib0 -Destination $srclib -Force
-    }
-
-    cmd /c "$($vspath) /build Release Modules.sln"
-    cmd /c "$($vspath) /build Release Modules.sln"
-    cmd /c "$($vspath) /build Release Modules.sln" | Out-File $($cxoutfile) -Append;
-
-    $buildresult = Get-Content $($cxoutfile) | Select-String -Pattern '========== Build:'
-    $buildresults = $buildresult -split ","
-    $errors = $buildresults[1].Trim() -replace "[^0-9]"
-    if ($errors -gt 0)
-    {
-        Copy-Item $cxoutfile -Destination "$($pathtolog)$($request.ID).log"
-        $svc.FailBuild($request.ID);
-        stop-computer;
-        exit;
-    }
-
-    if ($svc.IsBuildCancelled($request.ID))
-    {
-        Write-State "Build Cancelled..."
-        stop-computer;
-        exit;
-    }
+    Invoke-CodeCompilation("$($workdir)Projects.32\Modules.sln", $cxoutfile, $pathtolog)
 
     #=========================================================
     # test request sending
