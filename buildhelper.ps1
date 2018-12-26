@@ -69,7 +69,7 @@ function Invoke-Code-Synch([string]$branch)
 function Invoke-CodeCompilation([string]$solution, [string]$solutionOutfile, [string]$pathtolog)
 {
     $buildcommand = "BuildConsole.exe ""$($solution)"" /rebuild /cfg=""Release|Mixed Platforms"" /NOLOGO /OUT=""$($solutionOutfile)"""
-    Write-State "Building code $($solutionOutfile)..."
+    Write-State "Building code $($solution)..."
 
     cmd /c "$($buildcommand)"
 
@@ -135,9 +135,9 @@ function Invoke-CodeBuilder()
 
     "#define _BSTUserName _T("".$($user)"")" | Out-File $($bstfile) -Encoding ascii
 
-    Invoke-CodeCompilation("$($workdir)Projects.32\All.sln", $fipoutfile, $pathtolog)
+    Invoke-CodeCompilation "$($workdir)Projects.32\All.sln" $fipoutfile $pathtolog
 
-    Invoke-CodeCompilation("$($workdir)Projects.32\Modules.sln", $cxoutfile, $pathtolog)
+    Invoke-CodeCompilation "$($workdir)Projects.32\Modules.sln" $cxoutfile $pathtolog
 
     #=========================================================
     # test request sending
