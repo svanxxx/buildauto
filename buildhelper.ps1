@@ -24,21 +24,29 @@ function Write-State([string]$txt)
     $svc.CommentBuild($request.ID, $txt);
     Write-Host $out;
 }
-function Invoke-Cleanup()
+function Invoke-Cleanup([bool]$weboutput)
 {
-    Write-State "Temp Folders Cleanup..."
+    if ($weboutput) {
+        Write-State "Temp Folders Cleanup..."
+    }
     $loc = Get-Location
     Set-Location $temp
     Remove-Item * -recurse -force
     Set-Location $loc
-    Write-State "V disk obj files folders cleanup..."
+    if ($weboutput) {
+        Write-State "V disk obj files folders cleanup..."
+    }
     Remove-Item –path V:\* -Force -Recurse -Confirm:$false
-    Write-State "Lib files cleanup..."
+    if ($weboutput) {
+        Write-State "Lib files cleanup..."
+    }
     Remove-Item –path "$($buildLibdir)*" -Force -Recurse -Confirm:$false
     Remove-Item –path "$($buildExedir)*" -Force -Recurse -Confirm:$false
     Remove-Item –path "$($mxbuildLibdir)*" -Force -Recurse -Confirm:$false
     Remove-Item –path "$($mxbuildExedir)*" -Force -Recurse -Confirm:$false
-    Write-State "IncrediBuild cleanup..."
+    if ($weboutput) {
+        Write-State "IncrediBuild cleanup..."
+    }
     Remove-Item –path "C:\Program Files (x86)\Xoreax\IncrediBuild\temp\*" -Force -Recurse -Confirm:$false
 }
 function Invoke-Code-Synch([string]$branch)
@@ -104,7 +112,7 @@ function Invoke-CodeCompilation([string]$solution, [string]$solutionOutfile, [st
 }
 function Invoke-CodeBuilder()
 {
-    Invoke-Cleanup
+    Invoke-Cleanup $true
     if ($svc.IsBuildCancelled($request.ID))
     {
         Write-State "Build Cancelled..."
@@ -165,6 +173,10 @@ function Invoke-CodeBuilder()
 
     $svc.FinishBuild($request.ID, "$($verguid)");
     Copy-Item $outfile -Destination "$($pathtolog)$($request.ID).log"
+
+    #to speedup next build.
+    Invoke-Cleanup $false
+
     stop-computer;
 }
 
