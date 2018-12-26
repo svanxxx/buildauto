@@ -142,6 +142,7 @@ function Invoke-CodeBuilder()
     #=========================================================
     # test request sending
     #=========================================================
+    Start-Service "MSSQLSERVER"
     Write-State "Sending test request..."
     Set-Location $($testdir);
     $testcmd = "RELEASE_TEST.BAT $($user) $($version) $($ttid) $($comment) $($vspath)";
