@@ -1,4 +1,4 @@
-$svc = New-WebServiceProxy –Uri ‘http://192.168.0.1/taskmanagerbeta/trservice.asmx?WSDL’
+$svc = New-WebServiceProxy ï¿½Uri ï¿½http://192.168.0.1/taskmanagerbeta/trservice.asmx?WSDLï¿½
 # extract current file path
 $thispath = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 # include WOL command
@@ -8,10 +8,11 @@ $thispath = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 $statusfile = "$($thispath)/tmp/Status.xml"
 $mymachines = New-Object System.Collections.ArrayList
 
-echo "Starting build machines control"
+Write-Output "Starting build machines control"
 Do
 {
     # here is the code to get the xml file
+    Write-Output "Getting information from coordinator..."
     $Command = "xgcoordconsole.exe"
     $Parms = ("/exportstatus=$($statusfile)")
     $Prms = $Parms.Split(" ")
@@ -21,6 +22,7 @@ Do
     [xml]$XmlDocument = Get-Content -Path $statusfile
     $Agents = $XmlDocument.SelectSingleNode("//Agents") 
     $Building = $false
+    Write-Output "Parsing xml..."
     FOREACH ($Agent in $Agents.ChildNodes)
     {
         if ($Agent.Attributes.GetNamedItem("Building").Value -eq "True")
@@ -35,7 +37,7 @@ Do
         $Building = $svc.hasBuildRequest()
     }
 
-    #checking MAC addresses
+    Write-Output "Checking MAC addresses..."
     FOREACH ($Agent in $Agents.ChildNodes)
     {
         $AgentName = $Agent.Attributes.GetNamedItem("Host").Value
@@ -48,11 +50,12 @@ Do
             $condition = ((Test-Path $machinefilename) -and ((Get-Item $machinefilename).Length -gt 0) -and (((get-date) - (Get-Item $machinefilename).LastWriteTime) -lt $timespan))
             if ($condition -eq $false)
             {
+                Write-Output "Checking machine for online status: $($AgentName)..."
                 #only for machines that are phisically online:
-                $ison = Test-Connection $AgentName -Count 1 -Quiet
+                $ison = Test-Connection $AgentName -Count 1 -Quiet -tim
                 if ($ison)
                 {
-                    echo "Getting MAC of: $($AgentName)...."
+                    Write-Output "Getting MAC of: $($AgentName)...."
                     $results = Get-MACAddress $AgentName | Out-String
                     if ($results -ne "")
                     {
@@ -78,11 +81,11 @@ Do
                 {
                     if ($stopped -eq $false)
                     {
-                        echo "stopping machines..."
+                        Write-Output "stopping machines..."
                         $stopped = $true
                     }
 
-                    echo "Stopping: $($AgentName)...."
+                    Write-Output "Stopping: $($AgentName)...."
                     if ($svc.hasBuildRequest() -eq $false)
                     {
                         stop-computer $AgentName
@@ -110,7 +113,7 @@ Do
                     {
                        if ($started -eq $false)
                        {
-                            echo "starting machines..."
+                            Write-Output "starting machines..."
                             $started = $true
                        }
                        $line = $line -replace ':',''
