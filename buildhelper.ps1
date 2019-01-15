@@ -48,6 +48,7 @@ function Invoke-Cleanup([bool]$weboutput)
         Write-State "IncrediBuild cleanup..."
     }
     Remove-Item –path "C:\Program Files (x86)\Xoreax\IncrediBuild\temp\*" -Force -Recurse -Confirm:$false
+    Remove-Item –path "y:\.git\index.lock" -Force -Confirm:$false -ErrorAction SilentlyContinue
 }
 function Invoke-Code-Synch([string]$branch)
 {
