@@ -52,7 +52,7 @@ Do
             {
                 Write-Output "Checking machine for online status: $($AgentName)..."
                 #only for machines that are phisically online:
-                $ison = Test-Connection $AgentName -Count 1 -Quiet -tim
+                $ison = Test-Connection $AgentName -Count 1 -Quiet -TimeToLive 5
                 if ($ison)
                 {
                     Write-Output "Getting MAC of: $($AgentName)...."
