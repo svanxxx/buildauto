@@ -89,7 +89,7 @@ Do
                     Write-Output "Stopping: $($AgentName)...."
                     if ($svc.hasBuildRequest() -eq $false)
                     {
-                        stop-computer -ComputerName $AgentName -
+                        stop-computer -ComputerName $AgentName
                     }
                 }
             }
