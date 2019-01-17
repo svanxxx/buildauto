@@ -90,6 +90,7 @@ function Invoke-CodeCompilation([string]$solution, [string]$solutionOutfile, [st
         {
             Write-State "re - building code after TRK0002..."
             cmd /c "$($buildcommand)"
+            $filecontent = Get-Content $($solutionOutfile)
         }
         if ($filecontent | Select-String -Pattern "Build FAILED.")
         {
