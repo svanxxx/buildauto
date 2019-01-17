@@ -81,6 +81,7 @@ Do
                 {
                     if ($stopped -eq $false)
                     {
+                        Start-Sleep -seconds 10 #allow build machine to clean cache files before shutdown
                         Write-Output "stopping machines..."
                         $stopped = $true
                     }
@@ -88,7 +89,7 @@ Do
                     Write-Output "Stopping: $($AgentName)...."
                     if ($svc.hasBuildRequest() -eq $false)
                     {
-                        stop-computer $AgentName
+                        stop-computer -ComputerName $AgentName -
                     }
                 }
             }
@@ -127,5 +128,5 @@ Do
        }
     }
     Get-Date -Format HH:mm:ss
-    start-sleep -seconds 5
+    Start-Sleep -seconds 5
 } While ($TRUE)

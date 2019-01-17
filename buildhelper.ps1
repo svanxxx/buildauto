@@ -26,6 +26,8 @@ function Write-State([string]$txt)
 }
 function Invoke-Cleanup([bool]$weboutput)
 {
+    Write-Host "Cleanup..."
+    Write-Host "$(Get-Date)"
     if ($weboutput) {
         Write-State "Temp Folders Cleanup..."
     }
@@ -49,6 +51,7 @@ function Invoke-Cleanup([bool]$weboutput)
     }
     Remove-Item –path "C:\Program Files (x86)\Xoreax\IncrediBuild\temp\*" -Force -Recurse -Confirm:$false
     Remove-Item –path "y:\.git\index.lock" -Force -Confirm:$false -ErrorAction SilentlyContinue
+    Write-Host "$(Get-Date)"
 }
 function Invoke-Code-Synch([string]$branch)
 {
@@ -145,9 +148,9 @@ function Invoke-CodeBuilder()
 
     "#define _BSTUserName _T("".$($user)"")" | Out-File $($bstfile) -Encoding ascii
 
-    Invoke-CodeCompilation "$($workdir)Projects.32\All.sln" $fipoutfile $pathtolog
+    Invoke-CodeCompilation "$($builddir)All.sln" $fipoutfile $pathtolog
 
-    Invoke-CodeCompilation "$($workdir)Projects.32\Modules.sln" $cxoutfile $pathtolog
+    Invoke-CodeCompilation "$($builddir)Modules.sln" $cxoutfile $pathtolog
 
     #=========================================================
     # test request sending
@@ -158,6 +161,7 @@ function Invoke-CodeBuilder()
     $testcmd = "RELEASE_TEST.BAT $($user) $($version) $($ttid) $($comment) $($vspath)";
     Write-State "$($testcmd)"
     cmd /c "$($testcmd)" | Out-File $($outfile) -Append;
+    Stop-Service "MSSQLSERVER"
 
     $fileerror = Select-String -Path $outfile -Pattern "^Error:" #line starts with 'error:'
     if ($null -ne $fileerror)
