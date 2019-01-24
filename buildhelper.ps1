@@ -186,11 +186,15 @@ function Invoke-CodeBuilder()
     stop-computer;
 }
 
+function Wait-Lan()
+{
+    while (-not (test-connection 192.168.0.1 -quiet)){Write-Output "waiting for connecton..."}
+}
+Wait-Lan
 cmd /c "\\192.168.0.1\Installs\Work\incprep.bat"
 while ($true)
 {
-    while (-not (test-connection 192.168.0.1 -quiet)){Write-Output "waiting for connecton..."}
-
+    Wait-Lan
     $request = $svc.getBuildRequest($env:computername.ToUpper())
     if ($request.TTID -ne 0 -and -not [string]::IsNullOrEmpty($request.BRANCH))
     {
