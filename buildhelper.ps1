@@ -95,8 +95,15 @@ function Invoke-CodeCompilation([string]$solution, [string]$solutionOutfile, [st
             cmd /c "$($buildcommand)"
             $filecontent = Get-Content $($solutionOutfile)
         }
-        if ($filecontent | Select-String -Pattern "Build FAILED.")
+        $builderr = $filecontent | Select-String -SimpleMatch "): error"
+        if ($builderr)
         {
+            Write-State $builderr
+            $errors = 1
+        }        
+        elseif ($filecontent | Select-String -Pattern "Build FAILED.")
+        {
+            Write-State "Build FAILED. Click to see the log."
             $errors = 1
         }
     }
