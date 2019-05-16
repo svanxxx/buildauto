@@ -12,7 +12,7 @@ $outfile = "$($temp)buildoutput.log";
 $fipoutfile = "$($temp)fipbuildoutput.log";
 $cxoutfile = "$($temp)cxbuildoutput.log";
 $migrationlog = "c:\ProgramData\Fieldpro\FIP_SYSTEM_LOG.LOG";
-$svc = New-WebServiceProxy –Uri ‘http://192.168.0.1/taskmanagerbeta/trservice.asmx?WSDL’
+$svc = New-WebServiceProxy –Uri ‘http://192.168.0.2/taskmanagerbeta/trservice.asmx?WSDL’
 #$svc = New-WebServiceProxy –Uri ‘http://localhost:8311/TRService.asmx?WSDL’
 $request = $null;
 $vspath = """C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.com"""
@@ -204,10 +204,10 @@ function Invoke-CodeBuilder()
 
 function Wait-Lan()
 {
-    while (-not (test-connection 192.168.0.1 -quiet)){Write-Output "waiting for connecton..."}
+    while (-not (test-connection 192.168.0.2 -quiet)){Write-Output "waiting for connecton..."}
 }
 Wait-Lan
-cmd /c "\\192.168.0.1\Installs\Work\incprep.bat"
+cmd /c "\\192.168.0.2\Installs\Work\incprep.bat"
 while ($true)
 {
     Wait-Lan

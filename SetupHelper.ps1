@@ -56,7 +56,7 @@ New-Item -Path "HKCU:\Software\Policies\Microsoft\Windows\Explorer" | Out-Null
 Set-ItemProperty -Path "HKCU:\Software\Policies\Microsoft\Windows\Explorer" -Name "DisableNotificationCenter" -Type DWord -Value 1
 
 Set-Location c:\
-git clone \\192.168.0.1\git\v8 V8
+git clone \\192.168.0.2\git\v8 V8
 
 Set-Location D:\
 New-Item  -Name v8.release.obj -ItemType directory
