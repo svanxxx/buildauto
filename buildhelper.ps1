@@ -11,7 +11,8 @@ $temp = [System.IO.Path]::GetTempPath();
 $outfile = "$($temp)buildoutput.log";
 $fipoutfile = "$($temp)fipbuildoutput.log";
 $cxoutfile = "$($temp)cxbuildoutput.log";
-$svc = New-WebServiceProxy –Uri ‘http://192.168.0.1/taskmanagerbeta/trservice.asmx?WSDL’
+$migrationlog = "c:\ProgramData\Fieldpro\FIP_SYSTEM_LOG.LOG";
+$svc = New-WebServiceProxy –Uri ‘http://192.168.0.1/taskmanager/trservice.asmx?WSDL’
 #$svc = New-WebServiceProxy –Uri ‘http://localhost:8311/TRService.asmx?WSDL’
 $request = $null;
 $vspath = """C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.com"""
@@ -95,8 +96,15 @@ function Invoke-CodeCompilation([string]$solution, [string]$solutionOutfile, [st
             cmd /c "$($buildcommand)"
             $filecontent = Get-Content $($solutionOutfile)
         }
-        if ($filecontent | Select-String -Pattern "Build FAILED.")
+        $builderr = $filecontent | Select-String -SimpleMatch "): error"
+        if ($builderr)
         {
+            Write-State $builderr
+            $errors = 1
+        }        
+        elseif ($filecontent | Select-String -Pattern "Build FAILED.")
+        {
+            Write-State "Build FAILED. Click to see the log."
             $errors = 1
         }
     }
@@ -161,6 +169,14 @@ function Invoke-CodeBuilder()
     $testcmd = "RELEASE_TEST.BAT $($user) $($version) $($ttid) $($comment) $($vspath)";
     Write-State "$($testcmd)"
     cmd /c "$($testcmd)" | Out-File $($outfile) -Append;
+    if ($LASTEXITCODE -eq 1) {
+        Write-State "Failed to run release test."
+        Copy-Item $migrationlog -Destination "$($pathtolog)$($request.ID).log"
+        $svc.FailBuild($request.ID)
+        stop-computer
+        exit
+    }
+    
     Stop-Service "MSSQLSERVER"
 
     $fileerror = Select-String -Path $outfile -Pattern "^Error:" #line starts with 'error:'

@@ -1,4 +1,4 @@
-$svc = New-WebServiceProxy -Uri "http://192.168.0.1/taskmanagerbeta/trservice.asmx?WSDL"
+$svc = New-WebServiceProxy -Uri "http://192.168.0.1/taskmanager/trservice.asmx?WSDL"
 # extract current file path
 $thispath = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 # include WOL command
@@ -74,7 +74,6 @@ Do
             $AgentName = $Agent.Attributes.GetNamedItem("Host").Value
             if (($mymachines.Contains($AgentName)) -and ($Agent.Attributes.GetNamedItem("LoggedOnUsers").Value -eq "") -and ($Agent.Attributes.GetNamedItem("Online").Value -eq "True"))
             {
-                $mymachines.Remove($AgentName)
                 #only for machines that are phisically online:
                 $ison = Test-Connection $AgentName -Count 1 -Quiet
                 if ($ison)
@@ -90,6 +89,7 @@ Do
                     if ($svc.hasBuildRequest() -eq $false)
                     {
                         stop-computer -ComputerName $AgentName
+                        $mymachines.Remove($AgentName)
                     }
                 }
             }
