@@ -69,7 +69,6 @@ function Invoke-Code-Synch([string]$branch)
             git branch -D "$($branches[$i].Trim())"
         }
     }
-    cmd /c "git gc" | Out-File $($outfile) -Append;
     cmd /c "git fetch --all --prune" | Out-File $($outfile) -Append;
     cmd /c "git checkout $($branch)" | Out-File $($outfile) -Append;
     cmd /c "git pull origin" | Out-File $($outfile) -Append;
