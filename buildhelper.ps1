@@ -171,7 +171,7 @@ function Invoke-CodeBuilder()
     cmd /c "$($testcmd)" | Out-File $($outfile) -Append;
     if ($LASTEXITCODE -eq 1) {
         Write-State "Failed to run release test."
-        Copy-Item $migrationlog -Destination "$($pathtolog)$($request.ID).log"
+        Copy-Item $outfile -Destination "$($pathtolog)$($request.ID).log"
         $svc.FailBuild($request.ID)
         stop-computer
         exit
