@@ -11,7 +11,6 @@ $temp = [System.IO.Path]::GetTempPath();
 $outfile = "$($temp)buildoutput.log";
 $fipoutfile = "$($temp)fipbuildoutput.log";
 $cxoutfile = "$($temp)cxbuildoutput.log";
-$migrationlog = "c:\ProgramData\Fieldpro\FIP_SYSTEM_LOG.LOG";
 $svc = New-WebServiceProxy –Uri ‘http://192.168.0.1/taskmanager/trservice.asmx?WSDL’
 #$svc = New-WebServiceProxy –Uri ‘http://localhost:8311/TRService.asmx?WSDL’
 $request = $null;
@@ -71,7 +70,17 @@ function Invoke-Code-Synch([string]$branch)
     }
     cmd /c "git fetch --all --prune" | Out-File $($outfile) -Append;
     cmd /c "git checkout $($branch)" | Out-File $($outfile) -Append;
+    cmd /c "git status" | Out-File $($outfile) -Append;
     cmd /c "git pull origin" | Out-File $($outfile) -Append;
+    $currbranch = cmd /c "git rev-parse --abbrev-ref HEAD"
+    if ($currbranch -ne $branch)
+    {
+        Write-Output "Error: current brach is: $($currbranch)"
+        Write-Output "Expected: $($branch)"
+        Write-State "Build aborted, GIT exception..."
+        stop-computer
+        exit
+    }    
     if ($svc.IsBuildCancelled($request.ID))
     {
         Write-State "Build Cancelled..."
