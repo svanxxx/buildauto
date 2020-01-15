@@ -69,7 +69,7 @@ function Invoke-Code-Synch([string]$branch)
         }
     }
     cmd /c "git fetch --all --prune" | Out-File $($outfile) -Append;
-    cmd /c "git checkout $($branch)" | Out-File $($outfile) -Append;
+    cmd /c "git checkout ""$($branch)""" | Out-File $($outfile) -Append;
     cmd /c "git status" | Out-File $($outfile) -Append;
     cmd /c "git pull origin" | Out-File $($outfile) -Append;
     $currbranch = cmd /c "git rev-parse --abbrev-ref HEAD"
