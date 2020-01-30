@@ -210,7 +210,23 @@ function Invoke-CodeBuilder()
 
     stop-computer;
 }
-
+function Invoke-GitMaintain {
+    $lastdate = ""
+    $todaydate = Get-Date -Format "dd:MM:yyyy"
+    if (Test-Path HKLM:\SOFTWARE\buldauto){
+        $lastdate = Get-ItemProperty -Path HKLM:\SOFTWARE\buldauto -Name "gctime"
+    } else {
+        New-Item HKLM:\SOFTWARE\buldauto
+    }
+    if ($todaydate -ne $lastdate.gctime){
+        Set-ItemProperty -Path HKLM:\SOFTWARE\buldauto -Name "gctime" -Value "$($todaydate)"
+        Set-Location y:
+        git.exe reset --hard
+        git.exe checkout master
+        git.exe pull
+        git.exe gc
+    }
+}
 function Wait-Lan()
 {
     while (-not (test-connection 192.168.0.1 -quiet)){Write-Output "waiting for connecton..."}
@@ -224,6 +240,8 @@ while ($true)
     if ($request.TTID -ne 0 -and -not [string]::IsNullOrEmpty($request.BRANCH))
     {
         Invoke-CodeBuilder
+    } else {
+        Invoke-GitMaintain
     }
     Write-Host "$(Get-Date)"
     Start-Sleep -Seconds 1
