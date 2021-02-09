@@ -2,6 +2,7 @@
 $builddir = "$($workdir)Projects.32\";
 $buildLibdir = "$($workdir)Release.lib\";
 $buildExedir = "$($workdir)Release.exe\";
+$requestInfo = "$($buildExedir)BSTRequestInfo.txt";
 $mxbuildLibdir = "$($workdir)Modules.32\Release.lib\";
 $mxbuildExedir = "$($workdir)Modules.32\Release.exe\";
 $testdir = "$($workdir).Ext\";
@@ -11,6 +12,9 @@ $temp = [System.IO.Path]::GetTempPath();
 $outfile = "$($temp)buildoutput.log";
 $fipoutfile = "$($temp)fipbuildoutput.log";
 $cxoutfile = "$($temp)cxbuildoutput.log";
+$mxinstall = "$($workdir)Installs\OUTPUT\ONSITE_MODULES_WIX\BUILD_RELEASE.bat";
+$mxinstallRes = "$($workdir)Installs\OUTPUT\ONSITE_MODULES_WIX\bin\FIELDPRO_MODELS_ONSITE_REAL_TIME.msi";
+$SocketDir = "\\192.168.0.7\ReleaseSocket\Stack\";
 $svc = New-WebServiceProxy –Uri ‘http://192.168.0.1/taskmanager/trservice.asmx?WSDL’
 #$svc = New-WebServiceProxy –Uri ‘http://localhost:8311/TRService.asmx?WSDL’
 $request = $null;
@@ -186,6 +190,14 @@ function Invoke-CodeBuilder()
         exit
     }
     
+    #=======================================================
+    # making mx installation
+    #=======================================================
+    Write-State "$($mxinstall)"
+    cmd /c "$($mxinstall)" | Out-File $($outfile) -Append;
+    $sockfolder = Get-Content "$($requestInfo)" -First 1
+    Copy-Item "$($mxinstallRes)" "$($SocketDir)$($sockfolder)"
+
     Stop-Service "MSSQLSERVER"
 
     $fileerror = Select-String -Path $outfile -Pattern "^Error:" #line starts with 'error:'
