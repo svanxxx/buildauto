@@ -178,8 +178,6 @@ function Invoke-CodeBuilder()
     #=======================================================
     Write-State "$($mxinstall)"
     cmd /c "$($mxinstall)" | Out-File $($outfile) -Append;
-    $sockfolder = Get-Content "$($requestInfo)" -First 1
-    Copy-Item "$($mxinstallRes)" "$($SocketDir)$($sockfolder)"
 
     #=========================================================
     # test request sending
@@ -197,7 +195,13 @@ function Invoke-CodeBuilder()
         stop-computer
         exit
     }
-    
+
+    #=======================================================
+    # copy mx installation
+    #=======================================================
+    $sockfolder = Get-Content "$($requestInfo)" -First 1
+    Copy-Item "$($mxinstallRes)" "$($SocketDir)$($sockfolder)"
+
     Stop-Service "MSSQLSERVER"
 
     $fileerror = Select-String -Path $outfile -Pattern "^Error:" #line starts with 'error:'
