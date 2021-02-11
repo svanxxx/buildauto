@@ -173,6 +173,14 @@ function Invoke-CodeBuilder()
 
     Invoke-CodeCompilation "$($builddir)Modules.sln" $cxoutfile $pathtolog
 
+    #=======================================================
+    # making mx installation
+    #=======================================================
+    Write-State "$($mxinstall)"
+    cmd /c "$($mxinstall)" | Out-File $($outfile) -Append;
+    $sockfolder = Get-Content "$($requestInfo)" -First 1
+    Copy-Item "$($mxinstallRes)" "$($SocketDir)$($sockfolder)"
+
     #=========================================================
     # test request sending
     #=========================================================
@@ -190,14 +198,6 @@ function Invoke-CodeBuilder()
         exit
     }
     
-    #=======================================================
-    # making mx installation
-    #=======================================================
-    Write-State "$($mxinstall)"
-    cmd /c "$($mxinstall)" | Out-File $($outfile) -Append;
-    $sockfolder = Get-Content "$($requestInfo)" -First 1
-    Copy-Item "$($mxinstallRes)" "$($SocketDir)$($sockfolder)"
-
     Stop-Service "MSSQLSERVER"
 
     $fileerror = Select-String -Path $outfile -Pattern "^Error:" #line starts with 'error:'
