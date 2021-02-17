@@ -14,6 +14,8 @@ $fipoutfile = "$($temp)fipbuildoutput.log";
 $cxoutfile = "$($temp)cxbuildoutput.log";
 $mxinstall = "$($workdir)Installs\OUTPUT\ONSITE_MODULES_WIX\BUILD_RELEASE.bat";
 $mxinstallRes = "$($workdir)Installs\OUTPUT\ONSITE_MODULES_WIX\bin\FIELDPRO_MODELS_ONSITE_REAL_TIME.msi";
+$metadatainstall = "$($workdir)Installs\OUTPUT\METADATAGENERATOR_WIX\BUILD_RELEASE.bat";
+$metadatainstallRes = "$($workdir)Installs\OUTPUT\METADATAGENERATOR_WIX\bin\METADATAGENERATOR.msi";
 $SocketDir = "\\192.168.0.7\ReleaseSocket\Stack\";
 $svc = New-WebServiceProxy –Uri ‘http://192.168.0.1/taskmanager/trservice.asmx?WSDL’
 #$svc = New-WebServiceProxy –Uri ‘http://localhost:8311/TRService.asmx?WSDL’
@@ -178,6 +180,12 @@ function Invoke-CodeBuilder()
     #=======================================================
     Write-State "$($mxinstall)"
     cmd /c "$($mxinstall)" | Out-File $($outfile) -Append;
+    
+    #=======================================================
+    # making metadata installation
+    #=======================================================
+    Write-State "$($metadatainstall)"
+    cmd /c "$($metadatainstall)" | Out-File $($outfile) -Append;
 
     #=========================================================
     # test request sending
@@ -202,6 +210,11 @@ function Invoke-CodeBuilder()
     $sockfolder = Get-Content "$($requestInfo)" -First 1
     Copy-Item "$($mxinstallRes)" "$($SocketDir)$($sockfolder)"
 
+    #=======================================================
+    # copy metadata installation
+    #=======================================================
+    Copy-Item "$($metadatainstallRes)" "$($SocketDir)$($sockfolder)"
+    
     Stop-Service "MSSQLSERVER"
 
     $fileerror = Select-String -Path $outfile -Pattern "^Error:" #line starts with 'error:'
