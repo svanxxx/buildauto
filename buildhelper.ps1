@@ -12,10 +12,11 @@ $temp = [System.IO.Path]::GetTempPath();
 $outfile = "$($temp)buildoutput.log";
 $fipoutfile = "$($temp)fipbuildoutput.log";
 $cxoutfile = "$($temp)cxbuildoutput.log";
-$mxinstall = "$($workdir)Installs\OUTPUT\ONSITE_MODULES_WIX\BUILD_RELEASE.bat";
-$mxinstallRes = "$($workdir)Installs\OUTPUT\ONSITE_MODULES_WIX\bin\FIELDPRO_MODELS_ONSITE_REAL_TIME.msi";
-$metadatainstall = "$($workdir)Installs\OUTPUT\METADATAGENERATOR_WIX\BUILD_RELEASE.bat";
-$metadatainstallRes = "$($workdir)Installs\OUTPUT\METADATAGENERATOR_WIX\bin\METADATAGENERATOR.msi";
+$installs = "$($workdir)Installs\OUTPUT\";
+$mxinstall = "$($installs)ONSITE_MODULES_WIX\BUILD_RELEASE.bat";
+$mxinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_MODELS_ONSITE_REAL_TIME.msi";
+$metadatainstall = "$($installs)METADATAGENERATOR_WIX\BUILD_RELEASE.bat";
+$metadatainstallRes = "$($installs)METADATAGENERATOR_WIX\bin\METADATAGENERATOR.msi";
 $SocketDir = "\\192.168.0.7\ReleaseSocket\Stack\";
 $svc = New-WebServiceProxy –Uri ‘http://192.168.0.1/taskmanager/trservice.asmx?WSDL’
 #$svc = New-WebServiceProxy –Uri ‘http://localhost:8311/TRService.asmx?WSDL’
@@ -33,6 +34,9 @@ function Write-State([string]$txt)
 function Invoke-Cleanup([bool]$weboutput)
 {
     Write-Host "Cleanup..."
+    Write-Host "Removing Old msi files..."
+    Get-ChildItem "$($installs)" -Include *.msi -Recurse | Remove-Item
+
     Write-Host "$(Get-Date)"
     if ($weboutput) {
         Write-State "Temp Folders Cleanup..."
