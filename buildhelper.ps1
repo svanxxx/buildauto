@@ -47,9 +47,9 @@ function Invoke-Cleanup([bool]$weboutput)
     Remove-Item * -recurse -force
     Set-Location $loc
     if ($weboutput) {
-        Write-State "V disk obj files folders cleanup..."
+        Write-State "Obj files folders cleanup..."
     }
-    Remove-Item –path V:\* -Force -Recurse -Confirm:$false
+    Remove-Item –path y:\.obj\* -Force -Recurse -Confirm:$false
     if ($weboutput) {
         Write-State "Lib files cleanup..."
     }
