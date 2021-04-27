@@ -2,6 +2,7 @@
 $builddir = "$($workdir)Projects.32\";
 $buildLibdir = "$($workdir)Release.lib\";
 $buildExedir = "$($workdir)Release.exe\";
+$buildObjdir = "$($workdir).obj\";
 $requestInfo = "$($buildExedir)BSTRequestInfo.txt";
 $mxbuildLibdir = "$($workdir)Modules.32\Release.lib\";
 $mxbuildExedir = "$($workdir)Modules.32\Release.exe\";
@@ -47,16 +48,17 @@ function Invoke-Cleanup([bool]$weboutput)
     Remove-Item * -recurse -force
     Set-Location $loc
     if ($weboutput) {
-        Write-State "V disk obj files folders cleanup..."
+        Write-State "Obj files folders cleanup..."
     }
-    Remove-Item –path V:\* -Force -Recurse -Confirm:$false
+    Remove-Item –path "$($buildObjdir)*" -Force -Recurse -Confirm:$false
+
     if ($weboutput) {
         Write-State "Lib files cleanup..."
     }
-    Remove-Item –path "$($buildLibdir)*" -Force -Recurse -Confirm:$false
-    Remove-Item –path "$($buildExedir)*" -Force -Recurse -Confirm:$false
-    Remove-Item –path "$($mxbuildLibdir)*" -Force -Recurse -Confirm:$false
-    Remove-Item –path "$($mxbuildExedir)*" -Force -Recurse -Confirm:$false
+    Remove-Item –path "$($buildLibdir)*.*" -Force -Recurse -Confirm:$false
+    Remove-Item –path "$($buildExedir)*.*" -Force -Recurse -Confirm:$false
+    Remove-Item –path "$($mxbuildLibdir)*.*" -Force -Recurse -Confirm:$false
+    Remove-Item –path "$($mxbuildExedir)*.*" -Force -Recurse -Confirm:$false
     if ($weboutput) {
         Write-State "IncrediBuild cleanup..."
     }
