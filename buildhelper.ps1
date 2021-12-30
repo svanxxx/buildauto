@@ -17,6 +17,7 @@ $installs = "$($workdir)Installs\OUTPUT\";
 $mxinstall = "$($installs)ONSITE_MODULES_WIX\BUILD_RELEASE.bat";
 $mxinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_MODELS_ONSITE_REAL_TIME.msi";
 $onsiteinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_ONSITE.msi";
+$historianinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_HISTORIAN.msi";
 $metadatainstall = "$($installs)METADATAGENERATOR_WIX\BUILD_RELEASE.bat";
 $metadatainstallRes = "$($installs)METADATAGENERATOR_WIX\bin\METADATAGENERATOR.msi";
 $SocketDir = "\\192.168.0.7\ReleaseSocket\Stack\";
@@ -222,6 +223,12 @@ function Invoke-CodeBuilder()
     #=======================================================
     $sockfolder = Get-Content "$($requestInfo)" -First 1
     Copy-Item "$($onsiteinstallRes)" "$($SocketDir)$($sockfolder)"
+
+    #=======================================================
+    # copy historian installation
+    #=======================================================
+    $sockfolder = Get-Content "$($requestInfo)" -First 1
+    Copy-Item "$($historianinstallRes)" "$($SocketDir)$($sockfolder)"
 
     #=======================================================
     # copy metadata installation
