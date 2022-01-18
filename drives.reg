@@ -1,8 +1,4 @@
 Windows Registry Editor Version 5.00
 
 [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\DOS Devices] 
-"U:"="\\??\\D:\\v8.debug.obj"
-[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\DOS Devices] 
-"V:"="\\??\\D:\\v8.release.obj"
-[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\DOS Devices] 
-"Y:"="\\??\\C:\\v8"
+"Y:"="\\??\\C:\\repos\\v8"

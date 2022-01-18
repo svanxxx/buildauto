@@ -3,14 +3,17 @@ $BuildCleanUp = $false
 $GitSync = $false
 $Rebuild = $false
 
+$DSN = "FIELDPRO_BLANK_DATABASE"
 $workdir = "Y:\";
 $builddir = "$($workdir)Projects.32\";
 $buildLibdir = "$($workdir)Release.lib\";
 $buildExedir = "$($workdir)Release.exe\";
+$Migrator = "$($buildExedir)MigrateDB.exe";
 $requestInfo = "$($buildExedir)BSTRequestInfo.txt";
 $mxbuildLibdir = "$($workdir)Modules.32\Release.lib\";
 $mxbuildExedir = "$($workdir)Modules.32\Release.exe\";
-$testdir = "$($workdir).Ext\";
+$ExtDir = "$($workdir).Ext\";
+$DbReg = "$($ExtDir)db.reg";
 $bstinfo = "$($workdir)Release.exe\BSTRequestInfo.txt";
 $bstfile = "$($workdir)Common\BSTUserName.h"
 $VersionFile = "$($workdir)Common\AppVersions.h"
@@ -18,6 +21,7 @@ $temp = [System.IO.Path]::GetTempPath();
 $outfile = "$($temp)buildoutput.log";
 $fipoutfile = "$($temp)fipbuildoutput.log";
 $cxoutfile = "$($temp)cxbuildoutput.log";
+$DBZip = "$($workdir)Installs\INPUT\Database\MSSQL_ETALON.zip";
 $installs = "$($workdir)Installs\OUTPUT\";
 $mxinstall = "$($installs)ONSITE_MODULES_WIX\BUILD_RELEASE.bat";
 $mxinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_MODELS_ONSITE_REAL_TIME.msi";
@@ -53,13 +57,11 @@ $NewRequestParams = @{
 }
 $request = $null;
 function Copy-File-ToCloud([string]$file) {
-    $file
     $cfg = "$($PSScriptRoot)\bin\rclone.conf"
     "[syncconfig]`r`n$($request.config)" | Out-File $($cfg) -Encoding ascii
     $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""$($file)"" ""syncconfig:$(Get-UGuid)"""
     cmd /c $command
 }
-
 function Get-BuildUser() {
     return $request.userEmail.Split("@")[0].ToUpper()
 }
@@ -77,6 +79,10 @@ function Get-Version() {
     return $V
 }
 function Write-State([string]$txt) {
+    if ($txt.Length -gt 512) {
+        $txt = $txt.Substring(0, 512)
+    }
+    
     $stamp = Get-Date -Format "HH:mm:ss"
     $out = $stamp + ": " + $txt
     $out | Out-File $($outfile) -Append;
@@ -136,6 +142,13 @@ function FailBuild {
     }
     Invoke-RestMethod @FaileRequestParams
 }
+function FinishBuild {
+    $FinishRequestParams = @{
+        Uri    = $URL + "/api/finish?id=" + $request.id
+        Method = "POST"
+    }
+    Invoke-RestMethod @FinishRequestParams
+}
 function Invoke-Code-Synch([string]$branch) {
     $Null = @(
         $result = $true
@@ -169,7 +182,20 @@ function Invoke-Code-Synch([string]$branch) {
     )
     return $result
 }
-function Invoke-CodeCompilation([string]$solution, [string]$solutionOutfile) {
+function Invoke-LogAndExit([string]$Log, [bool]$Fail) {
+    $zip = "$($temp)log.zip"
+    if (Test-Path -Path $zip) {
+        Remove-Item $zip
+    }
+    Compress-Archive -Path $($Log) -DestinationPath $($zip)
+    Copy-File-ToCloud($zip)
+    if ($Fail){
+        FailBuild
+    } else {
+        FinishBuild
+    }
+}
+function Invoke-CodeCompilation([string]$Solution, [string]$BuildLog) {
     
     $Null = @(
         $result = $true
@@ -177,20 +203,20 @@ function Invoke-CodeCompilation([string]$solution, [string]$solutionOutfile) {
         if ($Rebuild) {
             $BuildType = "rebuild"
         }
-        Remove-Item -Path "$($solutionOutfile)" -Force -Confirm:$false -ErrorAction SilentlyContinue
-        $buildcommand = """$($vspath)"" ""$($solution)"" /$($BuildType) ""Release|Mixed Platforms"" /Out ""$($solutionOutfile)"""
-        Write-State "Building code $($solution)..."
+        Remove-Item -Path "$($BuildLog)" -Force -Confirm:$false -ErrorAction SilentlyContinue
+        $buildcommand = """$($vspath)"" ""$($Solution)"" /$($BuildType) ""Release|Mixed Platforms"" /Out ""$($BuildLog)"""
+        Write-State "Building code $($Solution)..."
     
         cmd /c "$($buildcommand)"
     
         $errors = 0
-        $filecontent = Get-Content $($solutionOutfile)
+        $filecontent = Get-Content $($BuildLog)
         $FinalString = $filecontent | Select-String -Pattern ", 0 failed,"
         if (!$FinalString) {
             if ($filecontent | Select-String -Pattern "TRACKER : error TRK0002") {
                 Write-State "re - building code after TRK0002..."
                 cmd /c "$($buildcommand)"
-                $filecontent = Get-Content $($solutionOutfile)
+                $filecontent = Get-Content $($BuildLog)
             }
             $builderr = $filecontent | Select-String -SimpleMatch "): error"
             if ($builderr) {
@@ -224,13 +250,7 @@ function Invoke-CodeCompilation([string]$solution, [string]$solutionOutfile) {
             }
         }
         if ($errors -gt 0) {
-            $zip = "$($temp)log.zip"
-            if (Test-Path -Path $zip) {
-                Remove-Item $zip
-            }
-            Compress-Archive -Path $($solutionOutfile) -DestinationPath $($zip)
-            Copy-File-ToCloud($zip)
-            FailBuild
+            Invoke-LogAndExit -Log $BuildLog -Fail $true
             $result = $false
         }
         elseif (IsBuildCancelled) {
@@ -252,6 +272,9 @@ function Invoke-CodeBuilder {
     #=========================================================
     # cleanup
     #=========================================================
+    if (Test-Path -Path $outfile) {
+        Remove-Item -Path $outfile
+    }
     if ($BuildCleanUp) {
         $res = Invoke-Cleanup($true)
         if (!$res) {
@@ -273,15 +296,80 @@ function Invoke-CodeBuilder {
     $user = Get-BuildUser
     "#define _BSTUserName _T("".$($user)"")" | Out-File $($bstfile) -Encoding ascii
 
-    $res = Invoke-CodeCompilation "$($builddir)All.sln" $fipoutfile
+    $res = Invoke-CodeCompilation -Solution "$($builddir)All.sln" -BuildLog $fipoutfile
     if (!$res) {
         return
     }
 
-    $res = Invoke-CodeCompilation "$($builddir)Modules.sln", $cxoutfile
+    $res = Invoke-CodeCompilation -Solution "$($builddir)Modules.sln" -BuildLog $cxoutfile
     if (!$res) {
         return
     }
+
+    #=======================================================
+    # Preparing database
+    #=======================================================
+
+    #Write-State "Creating DSN..."
+    #$dbCommand = "regedit /s ""$($DbReg)"""
+    #cmd /c $dbCommand | Out-File $($outfile) -Append;
+
+    Write-State "Extracting database..."
+    Expand-Archive -LiteralPath $DBZip -DestinationPath "C:\ProgramData\Fieldpro\" -Force
+    
+    Write-State "Restoring database..."
+    $RestoreCommand = "OSQL -S (local)\SQL2014 -U sa -P prosuite -Q ""RESTORE DATABASE $($DSN) FROM DISK = 'C:\ProgramData\Fieldpro\MSSQL_ETALON.bak' WITH REPLACE"""
+    cmd /c $RestoreCommand | Out-File $($outfile) -Append;
+
+    Write-State "Migrating database..."
+    $MigrateCommand = "$($Migrator) $($DSN) SkipWait"
+    $MigrateCommand | Out-File $($outfile) -Append;
+    cmd /c $MigrateCommand | Out-File $($outfile) -Append;
+
+    #=======================================================
+    # making mx installation
+    #=======================================================
+    Write-State "MX installation..."
+    if (Test-Path -Path $mxinstallRes) {
+        Remove-Item -Path $mxinstallRes
+    }
+    if (Test-Path -Path $onsiteinstallRes) {
+        Remove-Item -Path $onsiteinstallRes
+    }
+    cmd /c "$($mxinstall)" | Out-File $($outfile) -Append;
+    if (Test-Path -Path $mxinstallRes) {
+        Write-State "Uploading MX..."
+        Copy-File-ToCloud($mxinstallRes)
+    } else {
+        Write-State "Failed to build MX installation"
+        Invoke-LogAndExit -Log $outfile -Fail $true
+    }
+    if (Test-Path -Path $onsiteinstallRes) {
+        Write-State "Uploading Onsite..."
+        Copy-File-ToCloud($onsiteinstallRes)
+    } else {
+        Write-State "Failed to build Onsite installation"
+        Invoke-LogAndExit -Log $outfile -Fail $true
+    }
+
+    #=======================================================
+    # making METADATA installation
+    #=======================================================
+    Write-State "Building metadata..."
+    if (Test-Path -Path $metadatainstallRes) {
+        Remove-Item -Path $metadatainstallRes
+    }
+    cmd /c "$($metadatainstall)" | Out-File $($outfile) -Append;
+    if (Test-Path -Path $metadatainstallRes) {
+        Write-State "Uploading metadata..."
+        Copy-File-ToCloud($metadatainstallRes)
+    } else {
+        Write-State "Failed to build metadata"
+        Invoke-LogAndExit -Log $outfile -Fail $true
+    }
+
+    Write-State "Finished."
+    Invoke-LogAndExit -Log $outfile -Fail $false
 }
 function Invoke-GitMaintain {
     $lastdate = ""
