@@ -6,29 +6,36 @@ $Rebuild = $false
 $DSN = "FIELDPRO_BLANK_DATABASE"
 $workdir = "Y:\";
 $builddir = "$($workdir)Projects.32\";
+$FIPPortable = "$($builddir)Release.zip";
+$MXPortable = "$($builddir)Modules.zip";
 $buildLibdir = "$($workdir)Release.lib\";
 $buildExedir = "$($workdir)Release.exe\";
 $Migrator = "$($buildExedir)MigrateDB.exe";
-$requestInfo = "$($buildExedir)BSTRequestInfo.txt";
 $mxbuildLibdir = "$($workdir)Modules.32\Release.lib\";
 $mxbuildExedir = "$($workdir)Modules.32\Release.exe\";
 $ExtDir = "$($workdir).Ext\";
 $DbReg = "$($ExtDir)db.reg";
-$bstinfo = "$($workdir)Release.exe\BSTRequestInfo.txt";
 $bstfile = "$($workdir)Common\BSTUserName.h"
 $VersionFile = "$($workdir)Common\AppVersions.h"
 $temp = [System.IO.Path]::GetTempPath();
 $outfile = "$($temp)buildoutput.log";
 $fipoutfile = "$($temp)fipbuildoutput.log";
 $cxoutfile = "$($temp)cxbuildoutput.log";
+
 $DBZip = "$($workdir)Installs\INPUT\Database\MSSQL_ETALON.zip";
+$DBForMigration = "$($workdir)Installs\INPUT\Database\MSSQL_ETALON.BAK";
+$RestoreCommand = "OSQL -S (local)\SQL2014 -E -Q ""RESTORE DATABASE $($DSN) FROM DISK = '$($DBForMigration)' WITH REPLACE"""
+$DBForInstall = "$($workdir)Installs\INPUT\Database\FIELDPRO_BLANK_DATABASE.BAK";
+$BackupCommand = "OSQL -S (local)\SQL2014 -E -Q ""BACKUP DATABASE $($DSN) TO DISK = '$($DBForInstall)'"""
+
 $installs = "$($workdir)Installs\OUTPUT\";
 $mxinstall = "$($installs)ONSITE_MODULES_WIX\BUILD_RELEASE.bat";
 $mxinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_MODELS_ONSITE_REAL_TIME.msi";
 $onsiteinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_ONSITE.msi";
 $metadatainstall = "$($installs)METADATAGENERATOR_WIX\BUILD_RELEASE.bat";
+$FIPinstall = "$($installs)FIELDPRO_WIX\BUILD_RELEASE.bat";
+$FIPinstallRes = "$($installs)FIELDPRO_WIX\bin\FIELDPRO.msi";
 $metadatainstallRes = "$($installs)METADATAGENERATOR_WIX\bin\METADATAGENERATOR.msi";
-$SocketDir = "\\192.168.0.7\ReleaseSocket\Stack\";
 $machine = $env:computername.ToUpper()
 $vspath = "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\devenv.com"
 $global:__UGuid = ""
@@ -45,6 +52,25 @@ function Get-UGuid() {
     }
     return $global:__UGuid
 }
+function Remove-File([string]$FileName) {
+    if (Test-Path -Path $FileName) {
+        Remove-Item -Path $FileName
+    }
+}
+function Test-File([string]$FileName, [string]$ActionName) {
+    $null = @(
+        $result = $true
+        if (!(Test-Path -Path $FileName)) {
+            Write-State "Failed to: $($ActionName)"
+            Invoke-LogAndExit -Log $outfile -Fail $true
+            $result = $false
+        }
+    )
+    return $result
+}
+function Invoke-Command([string]$Command) {
+    cmd /c "$($Command)" | Out-File $($outfile) -Append;
+}
 function GetURL {
     $file = $PSScriptRoot + "\builder.ini"
     $content = Get-Content $file
@@ -56,10 +82,18 @@ $NewRequestParams = @{
     Method = "GET"
 }
 $request = $null;
-function Copy-File-ToCloud([string]$file) {
+function Copy-File-ToCloud([string]$FileName, [string]$Message) {
+    Write-State $Message
+    $md5File = $FileName + ".md5"
+    Remove-File $md5File
+    $hash = Get-FileHash $FileName -Algorithm MD5
+    $hash.Hash | Out-File $($md5File) -Encoding ascii
+
     $cfg = "$($PSScriptRoot)\bin\rclone.conf"
     "[syncconfig]`r`n$($request.config)" | Out-File $($cfg) -Encoding ascii
-    $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""$($file)"" ""syncconfig:$(Get-UGuid)"""
+    $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""$($FileName)"" ""syncconfig:$(Get-UGuid)"""
+    cmd /c $command
+    $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""$($md5File)"" ""syncconfig:$(Get-UGuid)"""
     cmd /c $command
 }
 function Get-BuildUser() {
@@ -114,25 +148,29 @@ function Invoke-Cleanup([bool]$weboutput) {
         if ($weboutput) {
             Write-State "Lib files cleanup..."
         }
-        Remove-Item –path "$($buildLibdir)*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
-        Remove-Item –path "$($buildExedir)*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
-        Remove-Item –path "$($mxbuildLibdir)*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
-        Remove-Item –path "$($mxbuildExedir)*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
-        Remove-Item –path "y:\.git\index.lock" -Force -Confirm:$false -ErrorAction SilentlyContinue
+        Remove-Item -Path "$($buildLibdir)*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
+        Remove-Item -Path "$($buildExedir)*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
+        Remove-Item -Path "$($mxbuildLibdir)*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
+        Remove-Item -Path "$($mxbuildExedir)*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
+        Remove-Item -Path "y:\.git\index.lock" -Force -Confirm:$false -ErrorAction SilentlyContinue
         Write-Host "$(Get-Date)"
         if (IsBuildCancelled) {
-            Write-State "Build Cancelled..."
             $result = $false
         }
     )
     return $result
 }
 function IsBuildCancelled {
-    $CancelledRequestParams = @{
-        Uri    = $URL + "/api/cancelled?id=" + $request.id
-        Method = "GET"
-    }
-    $answer = Invoke-RestMethod @CancelledRequestParams
+    $Null = @(
+        $CancelledRequestParams = @{
+            Uri    = $URL + "/api/cancelled?id=" + $request.id
+            Method = "GET"
+        }
+        $answer = Invoke-RestMethod @CancelledRequestParams
+        if ($answer){
+            Write-State "Build Cancelled..."
+        }
+    )
     return $answer
 }
 function FailBuild {
@@ -155,19 +193,19 @@ function Invoke-Code-Synch([string]$branch) {
 
         Write-State "Pull Code ($($branch)) From Git..."
         Set-Location $($workdir);
-        cmd /c "git reset --hard" | Out-File $($outfile) -Append;
-        cmd /c "git checkout master" | Out-File $($outfile) -Append;
-        cmd /c "git reset --hard" | Out-File $($outfile) -Append;
+        Invoke-Command "git reset --hard"
+        Invoke-Command "git checkout master"
+        Invoke-Command "git reset --hard"
         $branches = git branch
         For ($i = 0; $i -lt $branches.Length; $i++) {
             if ($branches[$i].Trim() -ne "* master") {
                 git branch -D "$($branches[$i].Trim())"
             }
         }
-        cmd /c "git fetch --all --prune" | Out-File $($outfile) -Append;
-        cmd /c "git checkout ""$($branch)""" | Out-File $($outfile) -Append;
-        cmd /c "git status" | Out-File $($outfile) -Append;
-        cmd /c "git pull origin" | Out-File $($outfile) -Append;
+        Invoke-Command "git fetch --all --prune"
+        Invoke-Command "git checkout ""$($branch)"""
+        Invoke-Command "git status"
+        Invoke-Command "git pull origin"
         $currbranch = cmd /c "git rev-parse --abbrev-ref HEAD"
         if ($currbranch -ne $branch) {
             Write-Output "Error: current brach is: $($currbranch)"
@@ -176,7 +214,6 @@ function Invoke-Code-Synch([string]$branch) {
             $result = $false
         }    
         elseif (IsBuildCancelled) {
-            Write-State "Build Cancelled..."
             $result = $false
         }
     )
@@ -184,14 +221,14 @@ function Invoke-Code-Synch([string]$branch) {
 }
 function Invoke-LogAndExit([string]$Log, [bool]$Fail) {
     $zip = "$($temp)log.zip"
-    if (Test-Path -Path $zip) {
-        Remove-Item $zip
-    }
+    Remove-File $zip
     Compress-Archive -Path $($Log) -DestinationPath $($zip)
-    Copy-File-ToCloud($zip)
-    if ($Fail){
+    Copy-File-ToCloud $zip "Uploading log file..."
+    if ($Fail) {
         FailBuild
-    } else {
+    }
+    else {
+        Write-State "Finished."
         FinishBuild
     }
 }
@@ -254,7 +291,6 @@ function Invoke-CodeCompilation([string]$Solution, [string]$BuildLog) {
             $result = $false
         }
         elseif (IsBuildCancelled) {
-            Write-State "Build Cancelled..."
             $result = $false
         }        
     )
@@ -272,9 +308,7 @@ function Invoke-CodeBuilder {
     #=========================================================
     # cleanup
     #=========================================================
-    if (Test-Path -Path $outfile) {
-        Remove-Item -Path $outfile
-    }
+    Remove-File $outfile
     if ($BuildCleanUp) {
         $res = Invoke-Cleanup($true)
         if (!$res) {
@@ -316,59 +350,87 @@ function Invoke-CodeBuilder {
 
     Write-State "Extracting database..."
     Expand-Archive -LiteralPath $DBZip -DestinationPath "C:\ProgramData\Fieldpro\" -Force
-    
+    if (IsBuildCancelled) { return }
     Write-State "Restoring database..."
-    $RestoreCommand = "OSQL -S (local)\SQL2014 -U sa -P prosuite -Q ""RESTORE DATABASE $($DSN) FROM DISK = 'C:\ProgramData\Fieldpro\MSSQL_ETALON.bak' WITH REPLACE"""
-    cmd /c $RestoreCommand | Out-File $($outfile) -Append;
+    Invoke-Command $RestoreCommand
+    if (IsBuildCancelled) { return }
 
     Write-State "Migrating database..."
     $MigrateCommand = "$($Migrator) $($DSN) SkipWait"
     $MigrateCommand | Out-File $($outfile) -Append;
-    cmd /c $MigrateCommand | Out-File $($outfile) -Append;
-
+    Invoke-Command $MigrateCommand
+    if (IsBuildCancelled) { return }
     #=======================================================
     # making mx installation
     #=======================================================
     Write-State "MX installation..."
-    if (Test-Path -Path $mxinstallRes) {
-        Remove-Item -Path $mxinstallRes
+    Remove-File $mxinstallRes
+    Remove-File $onsiteinstallRes
+    Invoke-Command "$($mxinstall)"
+    if (IsBuildCancelled) { return }
+    if (!(Test-File $mxinstallRes "MX installation build")) {
+        return
     }
-    if (Test-Path -Path $onsiteinstallRes) {
-        Remove-Item -Path $onsiteinstallRes
+    Copy-File-ToCloud $mxinstallRes "Uploading MX..."
+    if (IsBuildCancelled) { return }
+    if (!(Test-File $onsiteinstallRes "Onsite installation build")) {
+        return
     }
-    cmd /c "$($mxinstall)" | Out-File $($outfile) -Append;
-    if (Test-Path -Path $mxinstallRes) {
-        Write-State "Uploading MX..."
-        Copy-File-ToCloud($mxinstallRes)
-    } else {
-        Write-State "Failed to build MX installation"
-        Invoke-LogAndExit -Log $outfile -Fail $true
-    }
-    if (Test-Path -Path $onsiteinstallRes) {
-        Write-State "Uploading Onsite..."
-        Copy-File-ToCloud($onsiteinstallRes)
-    } else {
-        Write-State "Failed to build Onsite installation"
-        Invoke-LogAndExit -Log $outfile -Fail $true
-    }
+    Copy-File-ToCloud $onsiteinstallRes "Uploading Onsite..."
+    if (IsBuildCancelled) { return }
 
     #=======================================================
     # making METADATA installation
     #=======================================================
     Write-State "Building metadata..."
-    if (Test-Path -Path $metadatainstallRes) {
-        Remove-Item -Path $metadatainstallRes
+    Remove-File $metadatainstallRes
+    Invoke-Command "$($metadatainstall)"
+    if (IsBuildCancelled) { return }
+    if (!(Test-File $metadatainstallRes "Metadata installation build")) {
+        return
     }
-    cmd /c "$($metadatainstall)" | Out-File $($outfile) -Append;
-    if (Test-Path -Path $metadatainstallRes) {
-        Write-State "Uploading metadata..."
-        Copy-File-ToCloud($metadatainstallRes)
-    } else {
-        Write-State "Failed to build metadata"
-        Invoke-LogAndExit -Log $outfile -Fail $true
+    Copy-File-ToCloud $metadatainstallRes "Uploading metadata..."
+    if (IsBuildCancelled) { return }
+    #=======================================================
+    # making FIP installation
+    #=======================================================
+    Write-State "Backup database..."
+    Remove-File $DBForInstall
+    Invoke-Command $BackupCommand
+    if (IsBuildCancelled) { return }
+    if (!(Test-File $DBForInstall "Database backup")) {
+        return
     }
 
-    Write-State "Finished."
+    Write-State "FIP installation..."
+    Remove-File $FIPinstallRes
+    Invoke-Command "$($FIPinstall)"
+    if (IsBuildCancelled) { return }
+    if (!(Test-File $FIPinstallRes "FIP installation build")) {
+        return
+    }
+    Copy-File-ToCloud $FIPinstallRes "Uploading FIP installation..."
+    if (IsBuildCancelled) { return }
+
+    #=======================================================
+    # making FIP portable
+    #=======================================================
+    Write-State "Archivating FIP..."
+    Remove-File $FIPPortable
+    Compress-Archive -Path $($buildExedir) -DestinationPath "$($FIPPortable)"
+    if (IsBuildCancelled) { return }
+    Copy-File-ToCloud $FIPPortable "Uploading FIP zip..."
+    if (IsBuildCancelled) { return }
+    #=======================================================
+    # making MX portable
+    #=======================================================
+    Write-State "Archivating MX..."
+    Remove-File $MXPortable
+    Compress-Archive -Path $($mxbuildExedir) -DestinationPath "$($MXPortable)"
+    if (IsBuildCancelled) { return }
+    Copy-File-ToCloud $MXPortable "Uploading MX zip..."
+    if (IsBuildCancelled) { return }
+
     Invoke-LogAndExit -Log $outfile -Fail $false
 }
 function Invoke-GitMaintain {
