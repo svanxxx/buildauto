@@ -1,7 +1,7 @@
-﻿$TempCleanUp = $false
-$BuildCleanUp = $false
-$GitSync = $false
-$Rebuild = $false
+﻿$TempCleanUp = $true
+$BuildCleanUp = $true
+$GitSync = $true
+$Rebuild = $true
 
 $DSN = "FIELDPRO_BLANK_DATABASE"
 $workdir = "Y:\";
@@ -71,19 +71,23 @@ function Test-File([string]$FileName, [string]$ActionName) {
 function Invoke-Command([string]$Command) {
     cmd /c "$($Command)" | Out-File $($outfile) -Append;
 }
-function GetURL {
+function GetIniParam([int]$Index) {
     $file = $PSScriptRoot + "\builder.ini"
     $content = Get-Content $file
-    return $content
+    return $content[$Index]
 }
-$URL = GetURL
+$URL = GetIniParam(0)
+$ApiKey = GetIniParam(1)
 $NewRequestParams = @{
-    Uri    = $URL + "/api/catch?machine=" + $machine
-    Method = "GET"
+    Uri     = $URL + "/api/catch?machine=" + $machine
+    Method  = "GET"
+    Headers = @{ApiKey = $ApiKey }
 }
 $request = $null;
 function Copy-File-ToCloud([string]$FileName, [string]$Message) {
-    Write-State $Message
+    if ($Message.Length -gt 0) {
+        Write-State $Message
+    }
     $md5File = $FileName + ".md5"
     Remove-File $md5File
     $hash = Get-FileHash $FileName -Algorithm MD5
@@ -121,8 +125,9 @@ function Write-State([string]$txt) {
     $out = $stamp + ": " + $txt
     $out | Out-File $($outfile) -Append;
     $CommentRequestParams = @{
-        Uri    = $URL + "/api/comment?id=" + $request.id + "&comment=" + [uri]::EscapeUriString($txt)
-        Method = "POST"
+        Uri     = $URL + "/api/comment?id=" + $request.id + "&comment=" + [uri]::EscapeUriString($txt)
+        Method  = "POST"
+        Headers = @{ApiKey = $ApiKey }
     }
     $request = Invoke-RestMethod @CommentRequestParams
     Write-Host $out;
@@ -163,11 +168,12 @@ function Invoke-Cleanup([bool]$weboutput) {
 function IsBuildCancelled {
     $Null = @(
         $CancelledRequestParams = @{
-            Uri    = $URL + "/api/cancelled?id=" + $request.id
-            Method = "GET"
+            Uri     = $URL + "/api/cancelled?id=" + $request.id
+            Method  = "GET"
+            Headers = @{ApiKey = $ApiKey }
         }
         $answer = Invoke-RestMethod @CancelledRequestParams
-        if ($answer){
+        if ($answer) {
             Write-State "Build Cancelled..."
         }
     )
@@ -175,15 +181,17 @@ function IsBuildCancelled {
 }
 function FailBuild {
     $FaileRequestParams = @{
-        Uri    = $URL + "/api/fail?id=" + $request.id
-        Method = "POST"
+        Uri     = $URL + "/api/fail?id=" + $request.id
+        Method  = "POST"
+        Headers = @{ApiKey = $ApiKey }
     }
     Invoke-RestMethod @FaileRequestParams
 }
 function FinishBuild {
     $FinishRequestParams = @{
-        Uri    = $URL + "/api/finish?id=" + $request.id
-        Method = "POST"
+        Uri     = $URL + "/api/finish?id=" + $request.id
+        Method  = "POST"
+        Headers = @{ApiKey = $ApiKey }
     }
     Invoke-RestMethod @FinishRequestParams
 }
@@ -223,7 +231,7 @@ function Invoke-LogAndExit([string]$Log, [bool]$Fail) {
     $zip = "$($temp)log.zip"
     Remove-File $zip
     Compress-Archive -Path $($Log) -DestinationPath $($zip)
-    Copy-File-ToCloud $zip "Uploading log file..."
+    Copy-File-ToCloud $zip ""
     if ($Fail) {
         FailBuild
     }
@@ -299,8 +307,9 @@ function Invoke-CodeCompilation([string]$Solution, [string]$BuildLog) {
 function Update-UGuid() {
     $uguid_ = Get-UGuid
     $GuidRequestParams = @{
-        Uri    = $URL + "/api/uguid?id=" + $request.id + "&guid=" + $uguid_
-        Method = "POST"
+        Uri     = $URL + "/api/uguid?id=" + $request.id + "&guid=" + $uguid_
+        Method  = "POST"
+        Headers = @{ApiKey = $ApiKey }
     }
     Invoke-RestMethod @GuidRequestParams
 }
