@@ -6,16 +6,18 @@ $Rebuild = $true
 $DSN = "FIELDPRO_BLANK_DATABASE"
 $workdir = "Y:\";
 $builddir = "$($workdir)Projects.32\";
-$FIPPortable = "$($builddir)Release.zip";
-$MXPortable = "$($builddir)Modules.zip";
 $buildLibdir = "$($workdir)Release.lib\";
 $buildExedir = "$($workdir)Release.exe\";
+$buildExeFile = "$($workdir)Release.exe\Fieldpro.exe";
+$bstinfo = "$($buildExedir)BSTRequestInfo.txt";
 $Migrator = "$($buildExedir)MigrateDB.exe";
 $mxbuildLibdir = "$($workdir)Modules.32\Release.lib\";
 $mxbuildExedir = "$($workdir)Modules.32\Release.exe\";
 $ExtDir = "$($workdir).Ext\";
 $DbReg = "$($ExtDir)db.reg";
 $bstfile = "$($workdir)Common\BSTUserName.h"
+$statusFile = "$($builddir)status.txt"
+$RequestFile = "$($builddir)request.txt"
 $VersionFile = "$($workdir)Common\AppVersions.h"
 $temp = [System.IO.Path]::GetTempPath();
 $outfile = "$($temp)buildoutput.log";
@@ -30,18 +32,26 @@ $BackupCommand = "OSQL -S (local)\SQL2014 -E -Q ""BACKUP DATABASE $($DSN) TO DIS
 
 $installs = "$($workdir)Installs\OUTPUT\";
 $mxinstall = "$($installs)ONSITE_MODULES_WIX\BUILD_RELEASE.bat";
+#=======================================
+#Output files
+#=======================================
 $mxinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_MODELS_ONSITE_REAL_TIME.msi";
 $onsiteinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_ONSITE.msi";
+$historianinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_HISTORIAN.msi";
+$metadatainstallRes = "$($installs)METADATAGENERATOR_WIX\bin\METADATAGENERATOR.msi";
+$FIPinstallRes = "$($installs)FIELDPRO_WIX\bin\FIELDPRO.msi";
+$FIPPortable = "$($builddir)Release.zip";
+$MXPortable = "$($builddir)Modules.zip";
+$TestRequested = $mxinstallRes, $onsiteinstallRes, $historianinstallRes, $metadatainstallRes, $FIPinstallRes, $FIPPortable, $MXPortable
+#=======================================
 $metadatainstall = "$($installs)METADATAGENERATOR_WIX\BUILD_RELEASE.bat";
 $FIPinstall = "$($installs)FIELDPRO_WIX\BUILD_RELEASE.bat";
-$FIPinstallRes = "$($installs)FIELDPRO_WIX\bin\FIELDPRO.msi";
-$metadatainstallRes = "$($installs)METADATAGENERATOR_WIX\bin\METADATAGENERATOR.msi";
 $machine = $env:computername.ToUpper()
 $vspath = "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\devenv.com"
 $global:__UGuid = ""
 function Get-UGuid() {
     if ($global:__UGuid -eq "") {
-        $u = Get-BuildUser
+        $u = Get-CodeOwner
         $v = Get-Version
         $v1 = $v[0]
         $v2 = $v[1]
@@ -51,6 +61,28 @@ function Get-UGuid() {
         $global:__UGuid = "$($u)_V$($v1).$($v2).$($v3).$($v4)_$($d)"
     }
     return $global:__UGuid
+}
+$global:_CVersion = ""
+function Get-CodeVersion() {
+    if ($global:_CVersion -eq "") {
+        $u = Get-CodeOwner
+        $v = Get-Version
+        $v1 = $v[0]
+        $v2 = $v[1]
+        $v3 = $v[2]
+        $v4 = $v[3]
+        $d = (Get-Date).ToString("yyyy")
+        $global:_CVersion = "$($d).$($v1).$($v2).$($v3).$($v4).$($u)"
+    }
+    return $global:_CVersion
+}
+function Compress-Directory {
+    param (
+        [string]$Path,
+        [string]$DestinationPath
+    )
+    $Zipper = "$($PSScriptRoot)\bin\7za.exe a -tzip -r -mx=1 -mm=Deflate ""$($DestinationPath)"" ""$($Path)\*"""
+    cmd /c "$($Zipper)"
 }
 function Remove-File([string]$FileName) {
     if (Test-Path -Path $FileName) {
@@ -78,13 +110,22 @@ function GetIniParam([int]$Index) {
 }
 $URL = GetIniParam(0)
 $ApiKey = GetIniParam(1)
+function Get-Headers {
+    return @{Authorization = "ApiKey $($ApiKey)" }
+}
 $NewRequestParams = @{
     Uri     = $URL + "/api/catch?machine=" + $machine
     Method  = "GET"
-    Headers = @{ApiKey = $ApiKey }
+    Headers = Get-Headers
 }
 $request = $null;
-function Copy-File-ToCloud([string]$FileName, [string]$Message) {
+function Copy-File-ToCloud {
+    param (
+        [string]$FileName, 
+        [string]$Message,
+        [bool]$DeleteFile = $true
+    )
+
     if ($Message.Length -gt 0) {
         Write-State $Message
     }
@@ -99,10 +140,19 @@ function Copy-File-ToCloud([string]$FileName, [string]$Message) {
     cmd /c $command
     $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""$($md5File)"" ""syncconfig:$(Get-UGuid)"""
     cmd /c $command
+
+    if ($DeleteFile) {
+        Remove-File $FileName    
+    }
+    Remove-File $md5File
 }
 function Get-BuildUser() {
     return $request.userEmail.Split("@")[0].ToUpper()
 }
+function Get-CodeOwner() {
+    return $request.ownerEmail.Split("@")[0].ToUpper()
+}
+
 function Get-Version() {
     $V = "", "", "", ""
     $VM = "#define __FILEVERSION_NUMBER_FIP_2__", "#define __FILEVERSION_NUMBER_FIP_3__", "#define __MINI_DB_UPDATE_VERSION__", "#define __FILEVERSION_NUMBER_FIP_4__"
@@ -110,7 +160,7 @@ function Get-Version() {
     Get-Content $VersionFile | ForEach-Object {
         for ($i = 0; $i -lt $VM.Length; $i++) { 
             if ($_ -match "$($VM[$i])*") {
-                $V[$i] = $_.Substring($VM[$i].Length).Trim().Split("//")[0].ToUpper()
+                $V[$i] = $_.Substring($VM[$i].Length).Trim().Split("//")[0].ToUpper().Trim()
             }    
         }
     }
@@ -127,7 +177,7 @@ function Write-State([string]$txt) {
     $CommentRequestParams = @{
         Uri     = $URL + "/api/comment?id=" + $request.id + "&comment=" + [uri]::EscapeUriString($txt)
         Method  = "POST"
-        Headers = @{ApiKey = $ApiKey }
+        Headers = Get-Headers
     }
     $request = Invoke-RestMethod @CommentRequestParams
     Write-Host $out;
@@ -170,7 +220,7 @@ function IsBuildCancelled {
         $CancelledRequestParams = @{
             Uri     = $URL + "/api/cancelled?id=" + $request.id
             Method  = "GET"
-            Headers = @{ApiKey = $ApiKey }
+            Headers = Get-Headers
         }
         $answer = Invoke-RestMethod @CancelledRequestParams
         if ($answer) {
@@ -183,7 +233,7 @@ function FailBuild {
     $FaileRequestParams = @{
         Uri     = $URL + "/api/fail?id=" + $request.id
         Method  = "POST"
-        Headers = @{ApiKey = $ApiKey }
+        Headers = Get-Headers
     }
     Invoke-RestMethod @FaileRequestParams
 }
@@ -191,9 +241,18 @@ function FinishBuild {
     $FinishRequestParams = @{
         Uri     = $URL + "/api/finish?id=" + $request.id
         Method  = "POST"
-        Headers = @{ApiKey = $ApiKey }
+        Headers = Get-Headers
     }
     Invoke-RestMethod @FinishRequestParams
+}
+function Get-Git-Hash {
+    $null = @(
+        $loc = Get-Location
+        Get-Location $workdir
+        $hash = cmd /c "git rev-parse --abbrev-ref HEAD"
+        Get-Location $loc
+    )
+    return $hash
 }
 function Invoke-Code-Synch([string]$branch) {
     $Null = @(
@@ -205,9 +264,11 @@ function Invoke-Code-Synch([string]$branch) {
         Invoke-Command "git checkout master"
         Invoke-Command "git reset --hard"
         $branches = git branch
-        For ($i = 0; $i -lt $branches.Length; $i++) {
-            if ($branches[$i].Trim() -ne "* master") {
-                git branch -D "$($branches[$i].Trim())"
+        if ($branches -is [array]) {
+            For ($i = 0; $i -lt $branches.Length; $i++) {
+                if ($branches[$i].Trim() -ne "* master") {
+                    git branch -D "$($branches[$i].Trim())"
+                }
             }
         }
         Invoke-Command "git fetch --all --prune"
@@ -309,11 +370,15 @@ function Update-UGuid() {
     $GuidRequestParams = @{
         Uri     = $URL + "/api/uguid?id=" + $request.id + "&guid=" + $uguid_
         Method  = "POST"
-        Headers = @{ApiKey = $ApiKey }
+        Headers = Get-Headers
     }
     Invoke-RestMethod @GuidRequestParams
 }
 function Invoke-CodeBuilder {
+
+    taskkill.exe /f /im "cl.exe"
+    taskkill.exe /f /im "mspdbsrv.exe"
+
     #=========================================================
     # cleanup
     #=========================================================
@@ -336,13 +401,35 @@ function Invoke-CodeBuilder {
 
     Update-UGuid
 
-    $user = Get-BuildUser
+    $user = Get-CodeOwner
     "#define _BSTUserName _T("".$($user)"")" | Out-File $($bstfile) -Encoding ascii
+
+    #=======================================================
+    # building phx
+    #=======================================================
 
     $res = Invoke-CodeCompilation -Solution "$($builddir)All.sln" -BuildLog $fipoutfile
     if (!$res) {
         return
     }
+
+    #=======================================================
+    # adding test info
+    #=======================================================
+
+    $TestData = 1..4
+    $TestData[0] = $(Get-UGuid)
+    $TestData[1] = "VER:" + $(Get-CodeVersion)
+    $fi = (Get-ChildItem $($buildExeFile))
+    $date = $fi.CreationTime
+    $TestData[2] = $date.ToString("yyyy-MM-dd HH:mm:ss")
+    $date = $fi.LastWriteTime
+    $TestData[3] = $date.ToString("yyyy-MM-dd HH:mm:ss")
+    $TestData | Out-File $($bstinfo) -Encoding ascii
+        
+    #=======================================================
+    # building mx
+    #=======================================================
 
     $res = Invoke-CodeCompilation -Solution "$($builddir)Modules.sln" -BuildLog $cxoutfile
     if (!$res) {
@@ -375,6 +462,7 @@ function Invoke-CodeBuilder {
     Write-State "MX installation..."
     Remove-File $mxinstallRes
     Remove-File $onsiteinstallRes
+    Remove-File $historianinstallRes
     Invoke-Command "$($mxinstall)"
     if (IsBuildCancelled) { return }
     if (!(Test-File $mxinstallRes "MX installation build")) {
@@ -387,7 +475,42 @@ function Invoke-CodeBuilder {
     }
     Copy-File-ToCloud $onsiteinstallRes "Uploading Onsite..."
     if (IsBuildCancelled) { return }
-
+    if (!(Test-File $historianinstallRes "Historian installation build")) {
+        return
+    }
+    Copy-File-ToCloud $historianinstallRes "Uploading Historian..."
+    if (IsBuildCancelled) { return }
+    #=======================================================
+    # making FIP portable
+    #=======================================================
+    Write-State "Archivating FIP..."
+    Remove-File $FIPPortable
+    Compress-Directory -Path $($buildExedir) -DestinationPath "$($FIPPortable)"
+    if (IsBuildCancelled) { return }
+    Copy-File-ToCloud $FIPPortable "Uploading FIP zip..."
+    if (IsBuildCancelled) { return }
+    #=======================================================
+    # send request information
+    #=======================================================
+    $RequestInformaion = "id=$([uri]::EscapeUriString($request.parentID))"
+    $RequestInformaion += "&name=$([uri]::EscapeUriString($request.summary))"
+    $RequestInformaion += "&commands=$([uri]::EscapeUriString($request.testCommands))"
+    $RequestInformaion += "&batches=$([uri]::EscapeUriString($request.testBatches))"
+    $RequestInformaion += "&guid=$([uri]::EscapeUriString($(Get-UGuid)))"
+    $RequestInformaion += "&owner=$([uri]::EscapeUriString($(Get-CodeOwner)))"
+    $RequestInformaion += "&version=$([uri]::EscapeUriString($(Get-CodeVersion)))"
+    $RequestInformaion += "&comment=$([uri]::EscapeUriString($request.notes))"
+    $RequestInformaion += "&git=$([uri]::EscapeUriString($(Get-Git-Hash)))"
+    $RequestInformaion += "&priority=$([uri]::EscapeUriString($request.testPriority))"
+    $RequestInformaion | Out-File $($RequestFile) -Encoding ascii
+    Copy-File-ToCloud $RequestFile "Uploading request information..."
+    if (IsBuildCancelled) { return }
+    #=======================================================
+    # send ready signal
+    #=======================================================
+    $TestRequested | Out-File $($statusFile) -Encoding ascii
+    Copy-File-ToCloud $statusFile "Sending test signal..."
+    if (IsBuildCancelled) { return }
     #=======================================================
     # making METADATA installation
     #=======================================================
@@ -422,20 +545,11 @@ function Invoke-CodeBuilder {
     if (IsBuildCancelled) { return }
 
     #=======================================================
-    # making FIP portable
-    #=======================================================
-    Write-State "Archivating FIP..."
-    Remove-File $FIPPortable
-    Compress-Archive -Path $($buildExedir) -DestinationPath "$($FIPPortable)"
-    if (IsBuildCancelled) { return }
-    Copy-File-ToCloud $FIPPortable "Uploading FIP zip..."
-    if (IsBuildCancelled) { return }
-    #=======================================================
     # making MX portable
     #=======================================================
     Write-State "Archivating MX..."
     Remove-File $MXPortable
-    Compress-Archive -Path $($mxbuildExedir) -DestinationPath "$($MXPortable)"
+    Compress-Directory -Path $($mxbuildExedir) -DestinationPath "$($MXPortable)"
     if (IsBuildCancelled) { return }
     Copy-File-ToCloud $MXPortable "Uploading MX zip..."
     if (IsBuildCancelled) { return }
