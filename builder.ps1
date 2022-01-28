@@ -445,11 +445,15 @@ function Invoke-CodeBuilder {
     #cmd /c $dbCommand | Out-File $($outfile) -Append;
 
     Write-State "Extracting database..."
-    Expand-Archive -LiteralPath $DBZip -DestinationPath "C:\ProgramData\Fieldpro\" -Force
+    Expand-Archive -LiteralPath $DBZip -DestinationPath "$($workdir)Installs\INPUT\Database\" -Force
+    if (!(Test-File $DBForMigration "Extract empty sql database")) {
+        return
+    }
     if (IsBuildCancelled) { return }
     Write-State "Restoring database..."
     Invoke-Command $RestoreCommand
     if (IsBuildCancelled) { return }
+    Remove-Item -Path $DBForMigration
 
     Write-State "Migrating database..."
     $MigrateCommand = "$($Migrator) $($DSN) SkipWait"
@@ -585,6 +589,7 @@ Wait-Lan
 while ($true) {
     Wait-Lan
     $request = Invoke-RestMethod @NewRequestParams
+    $global:__UGuid = ""
     if ("" -ne $request) {
         Invoke-CodeBuilder
     }
