@@ -590,6 +590,7 @@ while ($true) {
     Wait-Lan
     $request = Invoke-RestMethod @NewRequestParams
     $global:__UGuid = ""
+    $global:_CVersion = ""
     if ("" -ne $request) {
         Invoke-CodeBuilder
     }
