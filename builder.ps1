@@ -460,6 +460,14 @@ function Invoke-CodeBuilder {
     $MigrateCommand | Out-File $($outfile) -Append;
     Invoke-Command $MigrateCommand
     if (IsBuildCancelled) { return }
+
+    Write-State "Backup database..."
+    Remove-File $DBForInstall
+    Invoke-Command $BackupCommand
+    if (IsBuildCancelled) { return }
+    if (!(Test-File $DBForInstall "Database backup")) {
+        return
+    }
     #=======================================================
     # making mx installation
     #=======================================================
@@ -530,14 +538,6 @@ function Invoke-CodeBuilder {
     #=======================================================
     # making FIP installation
     #=======================================================
-    Write-State "Backup database..."
-    Remove-File $DBForInstall
-    Invoke-Command $BackupCommand
-    if (IsBuildCancelled) { return }
-    if (!(Test-File $DBForInstall "Database backup")) {
-        return
-    }
-
     Write-State "FIP installation..."
     Remove-File $FIPinstallRes
     Invoke-Command "$($FIPinstall)"
