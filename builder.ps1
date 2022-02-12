@@ -588,11 +588,21 @@ if (!(Test-Path -Path $workdir)) {
 Wait-Lan
 while ($true) {
     Wait-Lan
-    $request = Invoke-RestMethod @NewRequestParams
+    try {
+        $request = Invoke-RestMethod @NewRequestParams
+    }
+    catch {
+        Write-Host "falied to connect to server"
+        Start-Sleep -Seconds 60
+        continue
+    } 
+    
     $global:__UGuid = ""
     $global:_CVersion = ""
     if ("" -ne $request) {
         Invoke-CodeBuilder
+        Start-Sleep -Seconds 60
+        Restart-Computer
     }
     else {
         Invoke-GitMaintain
