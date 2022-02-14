@@ -560,6 +560,28 @@ function Invoke-CodeBuilder {
 
     Invoke-LogAndExit -Log $outfile -Fail $false
 }
+function Invoke-Self-Updater {
+    $result = $false
+    $null = @(
+        Set-Location $PSScriptRoot
+        $Changes = git.exe diff-index HEAD
+        if ($null -ne $Changes) {
+            Write-Host "Git files are modified! The version will not auto update!"
+        }
+        else {
+            $HashLocal = git.exe rev-parse HEAD
+            $HashRemote = git.exe ls-remote origin HEAD
+            $HashRemote = $HashRemote.Split()[0]
+            if ($HashLocal -ne $HashRemote) {
+                git.exe pull origin
+                Write-Host "New update arrived. Restarting..."
+                Start-Sleep -Seconds 20
+                $result = $true
+            }
+        }
+    )
+    return $result
+}
 function Invoke-GitMaintain {
     $lastdate = ""
     $todaydate = Get-Date -Format "dd:MM:yyyy"
@@ -571,7 +593,7 @@ function Invoke-GitMaintain {
     }
     if ($todaydate -ne $lastdate.gctime) {
         Set-ItemProperty -Path HKCU:\SOFTWARE\buldauto -Name "gctime" -Value "$($todaydate)"
-        Set-Location y:
+        Set-Location $workdir
         git.exe reset --hard
         git.exe checkout master
         git.exe pull
@@ -586,8 +608,11 @@ if (!(Test-Path -Path $workdir)) {
 }
 #//////////////////////////////////////////////////////////////////////////////////////////////////////
 Wait-Lan
+if (Invoke-Self-Updater) {
+    Restart-Computer
+    return
+}
 while ($true) {
-    Wait-Lan
     try {
         $request = Invoke-RestMethod @NewRequestParams
     }
@@ -603,10 +628,15 @@ while ($true) {
         Invoke-CodeBuilder
         Start-Sleep -Seconds 60
         Restart-Computer
+        return
     }
     else {
         Invoke-GitMaintain
     }
     Write-Host "$(Get-Date)"
-    Start-Sleep -Seconds 1
+    Wait-Lan
+    if (Invoke-Self-Updater) {
+        Restart-Computer
+        return
+    }
 }
