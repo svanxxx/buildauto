@@ -575,7 +575,6 @@ function Invoke-Self-Updater {
             if ($HashLocal -ne $HashRemote) {
                 git.exe pull origin
                 Write-Host "New update arrived. Restarting..."
-                Start-Sleep -Seconds 20
                 $result = $true
             }
         }
@@ -609,6 +608,7 @@ if (!(Test-Path -Path $workdir)) {
 #//////////////////////////////////////////////////////////////////////////////////////////////////////
 Wait-Lan
 if (Invoke-Self-Updater) {
+    Start-Sleep -Seconds 20
     Restart-Computer
     return
 }
@@ -636,6 +636,7 @@ while ($true) {
     Write-Host "$(Get-Date)"
     Wait-Lan
     if (Invoke-Self-Updater) {
+        Start-Sleep -Seconds 20
         Restart-Computer
         return
     }
