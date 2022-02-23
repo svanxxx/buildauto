@@ -129,6 +129,13 @@ function Copy-File-ToCloud {
     if ($Message.Length -gt 0) {
         Write-State $Message
     }
+    $v = Get-Version
+    $rootFolder = "FIELDPRO_V$($v[0])"
+    $releaseFolder = "FIELDPRO V$($v[0]) $($v[1]).$($v[2]).$($v[3])"
+    $prefix = "_$($v[0])_$($v[1])_$($v[2])_$($v[3])"
+    $IsMSI = [System.IO.Path]::GetExtension($FileName).ToUpper() -eq ".MSI"
+    $FileNameNoPathNoExt = [System.IO.Path]::GetFileNameWithoutExtension($FileName)
+    $FileNameNoPath = [System.IO.Path]::GetFileName($FileName)
     $md5File = $FileName + ".md5"
     Remove-File $md5File
     $hash = Get-FileHash $FileName -Algorithm MD5
@@ -136,10 +143,16 @@ function Copy-File-ToCloud {
 
     $cfg = "$($PSScriptRoot)\bin\rclone.conf"
     "[syncconfig]`r`n$($request.config)" | Out-File $($cfg) -Encoding ascii
-    $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""$($FileName)"" ""syncconfig:$(Get-UGuid)"""
-    cmd /c $command
-    $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""$($md5File)"" ""syncconfig:$(Get-UGuid)"""
-    cmd /c $command
+    $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""$($FileName)"" ""syncconfig:/ReleaseSocket/$(Get-UGuid)"""
+    Invoke-Command $command
+    $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""$($md5File)"" ""syncconfig:/ReleaseSocket/$(Get-UGuid)"""
+    Invoke-Command $command
+    if ($request.BuildType -eq 2 -and $IsMSI) {
+        $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copyto ""syncconfig:/ReleaseSocket/$(Get-UGuid)/$($FileNameNoPath)"" ""syncconfig:/$($rootFolder)/$($releaseFolder)/$($FileNameNoPathNoExt)$($prefix).msi"""
+        Invoke-Command $command
+        $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copyto ""syncconfig:/ReleaseSocket/$(Get-UGuid)/$($FileNameNoPath).md5"" ""syncconfig:/$($rootFolder)/$($releaseFolder)/$($FileNameNoPathNoExt)$($prefix).msi.md5"""
+        Invoke-Command $command
+    }
 
     if ($DeleteFile) {
         Remove-File $FileName    
