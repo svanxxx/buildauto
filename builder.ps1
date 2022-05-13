@@ -121,10 +121,14 @@ $NewRequestParams = @{
 $request = $null;
 function Copy-Files-To-Channel-ToCloud {
     if ($request.BuildType -eq 2) {
+        $v = Get-Version
+        $rootFolder = "FIELDPRO_V$($v[0])"
+        $releaseFolder = "FIELDPRO V$($v[0]) $($v[1]).$($v[2]).$($v[3])"
+    
         $cfg = "$($PSScriptRoot)\bin\rclone.conf"
         "[syncconfig]`r`n$($request.config)" | Out-File $($cfg) -Encoding ascii
         $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" delete ""syncconfig:/MASTER/"""
-        $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""syncconfig:/ReleaseSocket/$(Get-UGuid)"" ""syncconfig:/MASTER/"""
+        $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""syncconfig:/$($rootFolder)/$($releaseFolder)"" ""syncconfig:/MASTER/"""
         Invoke-Command $command
     }
 }
