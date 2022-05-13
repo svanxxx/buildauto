@@ -60,4 +60,12 @@ while ($true) {
     }
     Write-Host $(Get-Date)
     Start-Sleep -Seconds 10
+
+    #Cleanup:
+    $MinimumAge = (Get-Date).AddDays(-5)
+    $folders = Get-ChildItem -Path $TestDirectory -Directory | Where-Object {$_.LastWriteTime -lt $MinimumAge}
+    foreach ($folder in $folders)
+    {
+        Remove-Item -LiteralPath $folder.FullName -Force -Recurse
+    }
 }
