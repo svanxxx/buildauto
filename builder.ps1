@@ -119,6 +119,15 @@ $NewRequestParams = @{
     Headers = Get-Headers
 }
 $request = $null;
+function Copy-Files-To-Channel-ToCloud {
+    if ($request.BuildType -eq 2) {
+        $cfg = "$($PSScriptRoot)\bin\rclone.conf"
+        "[syncconfig]`r`n$($request.config)" | Out-File $($cfg) -Encoding ascii
+        $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" delete ""syncconfig:/MASTER/"""
+        $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""syncconfig:/ReleaseSocket/$(Get-UGuid)"" ""syncconfig:/MASTER/"""
+        Invoke-Command $command
+    }
+}
 function Copy-File-ToCloud {
     param (
         [string]$FileName, 
@@ -312,6 +321,7 @@ function Invoke-LogAndExit([string]$Log, [bool]$Fail) {
     else {
         Write-State "Finished."
         FinishBuild
+        Copy-Files-To-Channel-ToCloud
     }
 }
 function Invoke-CodeCompilation([string]$Solution, [string]$BuildLog) {
