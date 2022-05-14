@@ -128,6 +128,7 @@ function Copy-Files-To-Channel-ToCloud {
         $cfg = "$($PSScriptRoot)\bin\rclone.conf"
         "[syncconfig]`r`n$($request.config)" | Out-File $($cfg) -Encoding ascii
         $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" delete ""syncconfig:/MASTER/"""
+        Invoke-Command $command
         $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""syncconfig:/$($rootFolder)/$($releaseFolder)"" ""syncconfig:/MASTER/"""
         Invoke-Command $command
     }
