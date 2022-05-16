@@ -202,7 +202,7 @@ function Write-State([string]$txt) {
     $out = $stamp + ": " + $txt
     $out | Out-File $($outfile) -Append;
     $CommentRequestParams = @{
-        Uri     = $URL + "/api/comment?id=" + $request.id + "&comment=" + [uri]::EscapeUriString($txt)
+        Uri     = $URL + "/api/comment?id=" + $request.id + "&comment=" + [uri]::EscapeDataString($txt)
         Method  = "POST"
         Headers = Get-Headers
     }
@@ -532,16 +532,16 @@ function Invoke-CodeBuilder {
     #=======================================================
     # send request information
     #=======================================================
-    $RequestInformaion = "id=$([uri]::EscapeUriString($request.parentID))"
-    $RequestInformaion += "&name=$([uri]::EscapeUriString($request.summary))"
-    $RequestInformaion += "&commands=$([uri]::EscapeUriString($request.testCommands))"
-    $RequestInformaion += "&batches=$([uri]::EscapeUriString($request.testBatches))"
-    $RequestInformaion += "&guid=$([uri]::EscapeUriString($(Get-UGuid)))"
-    $RequestInformaion += "&owner=$([uri]::EscapeUriString($(Get-CodeOwner)))"
-    $RequestInformaion += "&version=$([uri]::EscapeUriString($(Get-CodeVersion)))"
-    $RequestInformaion += "&comment=$([uri]::EscapeUriString($request.notes))"
-    $RequestInformaion += "&git=$([uri]::EscapeUriString($(Get-Git-Hash)))"
-    $RequestInformaion += "&priority=$([uri]::EscapeUriString($request.testPriority))"
+    $RequestInformaion = "id=$([uri]::EscapeDataString($request.parentID))"
+    $RequestInformaion += "&name=$([uri]::EscapeDataString($request.summary))"
+    $RequestInformaion += "&commands=$([uri]::EscapeDataString($request.testCommands))"
+    $RequestInformaion += "&batches=$([uri]::EscapeDataString($request.testBatches))"
+    $RequestInformaion += "&guid=$([uri]::EscapeDataString($(Get-UGuid)))"
+    $RequestInformaion += "&owner=$([uri]::EscapeDataString($(Get-CodeOwner)))"
+    $RequestInformaion += "&version=$([uri]::EscapeDataString($(Get-CodeVersion)))"
+    $RequestInformaion += "&comment=$([uri]::EscapeDataString($request.notes))"
+    $RequestInformaion += "&git=$([uri]::EscapeDataString($(Get-Git-Hash)))"
+    $RequestInformaion += "&priority=$([uri]::EscapeDataString($request.testPriority))"
     $RequestInformaion | Out-File $($RequestFile) -Encoding ascii
     Copy-File-ToCloud $RequestFile "Uploading request information..."
     if (IsBuildCancelled) { return }
