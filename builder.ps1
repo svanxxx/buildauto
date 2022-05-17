@@ -13,8 +13,6 @@ $bstinfo = "$($buildExedir)BSTRequestInfo.txt";
 $Migrator = "$($buildExedir)MigrateDB.exe";
 $mxbuildLibdir = "$($workdir)Modules.32\Release.lib\";
 $mxbuildExedir = "$($workdir)Modules.32\Release.exe\";
-$ExtDir = "$($workdir).Ext\";
-$DbReg = "$($ExtDir)db.reg";
 $bstfile = "$($workdir)Common\BSTUserName.h"
 $statusFile = "$($builddir)status.txt"
 $RequestFile = "$($builddir)request.txt"
@@ -42,7 +40,7 @@ $metadatainstallRes = "$($installs)METADATAGENERATOR_WIX\bin\METADATAGENERATOR.m
 $FIPinstallRes = "$($installs)FIELDPRO_WIX\bin\FIELDPRO.msi";
 $FIPPortable = "$($builddir)Release.zip";
 $MXPortable = "$($builddir)Modules.zip";
-$TestRequested = $mxinstallRes, $onsiteinstallRes, $historianinstallRes, $metadatainstallRes, $FIPinstallRes, $FIPPortable, $MXPortable
+$TestRequested = $mxinstallRes, $onsiteinstallRes, $historianinstallRes, $metadatainstallRes, $FIPinstallRes, $FIPPortable, $MXPortable, $bstinfo
 #=======================================
 $metadatainstall = "$($installs)METADATAGENERATOR_WIX\BUILD_RELEASE.bat";
 $FIPinstall = "$($installs)FIELDPRO_WIX\BUILD_RELEASE.bat";
@@ -548,6 +546,8 @@ function Invoke-CodeBuilder {
     #=======================================================
     # send ready signal
     #=======================================================
+    Copy-File-ToCloud $bstinfo "Uploading QA info file..."
+    if (IsBuildCancelled) { return }
     $TestRequested | Out-File $($statusFile) -Encoding ascii
     Copy-File-ToCloud $statusFile "Sending test signal..."
     if (IsBuildCancelled) { return }
