@@ -132,14 +132,14 @@ function Copy-Files-To-CloudChannel {
         Invoke-Command $command
 
         $loc = Get-Location
-        Get-Location $workdir
+        Set-Location $workdir
         $CodeFileName = "Sources.zip"
         $command = "$($PSScriptRoot)\bin\7za.exe a ${$CodeFileName} common Modules.32 Resshare.32 Utils.32 Webpro.32 Wellpro.32 Release.exe Release.lib"
         Invoke-Command $command
         $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""${$workdir}${$CodeFileName}"" ""syncconfig:/$($rootFolder)/$($releaseFolder)"""
         Invoke-Command $command
         Remove-File $CodeFileName
-        Get-Location $loc
+        Set-Location $loc
     }
 }
 function Copy-File-ToCloud {
@@ -285,9 +285,9 @@ function FinishBuild {
 function Get-Git-Hash {
     $null = @(
         $loc = Get-Location
-        Get-Location $workdir
+        Set-Location $workdir
         $hash = cmd /c "git rev-parse --abbrev-ref HEAD"
-        Get-Location $loc
+        Set-Location $loc
     )
     return $hash
 }
