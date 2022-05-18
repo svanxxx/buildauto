@@ -134,9 +134,11 @@ function Copy-Files-To-CloudChannel {
         $loc = Get-Location
         Set-Location $workdir
         $CodeFileName = "Sources.zip"
-        $command = "$($PSScriptRoot)\bin\7za.exe a ${$CodeFileName} common Modules.32 Resshare.32 Utils.32 Webpro.32 Wellpro.32 Release.exe Release.lib"
-        Invoke-Command $command
-        $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""${$workdir}${$CodeFileName}"" ""syncconfig:/$($rootFolder)/$($releaseFolder)"""
+
+        $zipexe = "$($PSScriptRoot)\bin\7za.exe"
+        &$zipexe a $CodeFileName common Modules.32 Resshare.32 Utils.32 Webpro.32 Wellpro.32 Release.exe Release.lib
+
+        $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""$($workdir)$($CodeFileName)"" ""syncconfig:/$($rootFolder)/$($releaseFolder)"""
         Invoke-Command $command
         Remove-File $CodeFileName
         Set-Location $loc
