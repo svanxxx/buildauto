@@ -38,6 +38,7 @@ $onsiteinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_ONSITE.msi";
 $historianinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_HISTORIAN.msi";
 $metadatainstallRes = "$($installs)METADATAGENERATOR_WIX\bin\METADATAGENERATOR.msi";
 $FIPinstallRes = "$($installs)FIELDPRO_WIX\bin\FIELDPRO.msi";
+$FIPinstallResBat = "$($installs)FIELDPRO_WIX\bin\FIELDPRO.msi.bat";
 $FIPPortable = "$($builddir)Release.zip";
 $MXPortable = "$($builddir)Modules.zip";
 $TestRequested = $mxinstallRes, $onsiteinstallRes, $historianinstallRes, $metadatainstallRes, $FIPinstallRes, $FIPPortable, $MXPortable, $bstinfo
@@ -117,7 +118,7 @@ $NewRequestParams = @{
     Headers = Get-Headers
 }
 $request = $null;
-function Copy-Files-To-Channel-ToCloud {
+function Copy-Files-To-CloudChannel {
     if ($request.BuildType -eq 2) {
         $v = Get-Version
         $rootFolder = "FIELDPRO_V$($v[0])"
@@ -129,6 +130,16 @@ function Copy-Files-To-Channel-ToCloud {
         Invoke-Command $command
         $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""syncconfig:/$($rootFolder)/$($releaseFolder)"" ""syncconfig:/MASTER/"""
         Invoke-Command $command
+
+        $loc = Get-Location
+        Get-Location $workdir
+        $CodeFileName = "Sources.zip"
+        $command = "$($PSScriptRoot)\bin\7za.exe a ${$CodeFileName} common Modules.32 Resshare.32 Utils.32 Webpro.32 Wellpro.32 Release.exe Release.lib"
+        Invoke-Command $command
+        $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""${$workdir}${$CodeFileName}"" ""syncconfig:/$($rootFolder)/$($releaseFolder)"""
+        Invoke-Command $command
+        Remove-File $CodeFileName
+        Get-Location $loc
     }
 }
 function Copy-File-ToCloud {
@@ -145,7 +156,8 @@ function Copy-File-ToCloud {
     $rootFolder = "FIELDPRO_V$($v[0])"
     $releaseFolder = "FIELDPRO V$($v[0]) $($v[1]).$($v[2]).$($v[3])"
     $prefix = "_$($v[0])_$($v[1])_$($v[2])_$($v[3])"
-    $IsMSI = [System.IO.Path]::GetExtension($FileName).ToUpper() -eq ".MSI"
+    $ext = [System.IO.Path]::GetExtension($FileName).ToUpper()
+    $IsMSI = $ext -eq ".MSI" -or $ext -eq ".MSI.BAT"
     $FileNameNoPathNoExt = [System.IO.Path]::GetFileNameWithoutExtension($FileName)
     $FileNameNoPath = [System.IO.Path]::GetFileName($FileName)
     $md5File = $FileName + ".md5"
@@ -324,7 +336,7 @@ function Invoke-LogAndExit([string]$Log, [bool]$Fail) {
     else {
         Write-State "Finished."
         FinishBuild
-        Copy-Files-To-Channel-ToCloud
+        Copy-Files-To-CloudChannel
     }
 }
 function Invoke-CodeCompilation([string]$Solution, [string]$BuildLog) {
@@ -574,6 +586,10 @@ function Invoke-CodeBuilder {
         return
     }
     Copy-File-ToCloud $FIPinstallRes "Uploading FIP installation..."
+    if (IsBuildCancelled) { return }
+
+    "msiexec /i ""%~dpn0""" | Out-File $($FIPinstallResBat) -Encoding ascii
+    Copy-File-ToCloud $FIPinstallResBat "Uploading FIP installation bat..."
     if (IsBuildCancelled) { return }
 
     #=======================================================
