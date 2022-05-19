@@ -445,7 +445,12 @@ function Invoke-CodeBuilder {
     Update-UGuid
 
     $user = Get-CodeOwner
-    "#define _BSTUserName _T("".$($user)"")" | Out-File $($bstfile) -Encoding ascii
+    if ($request.BuildType -ne 2) {
+        "#define _BSTUserName _T("".$($user)"")" | Out-File $($bstfile) -Encoding ascii
+    }
+    else {
+        "#define _BSTUserName _T("""")" | Out-File $($bstfile) -Encoding ascii
+    }
 
     #=======================================================
     # building phx
