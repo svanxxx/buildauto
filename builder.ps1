@@ -162,7 +162,7 @@ function Copy-File-ToCloud {
     $releaseFolder = "FIELDPRO V$($v[0]) $($v[1]).$($v[2]).$($v[3])"
     $prefix = "_$($v[0])_$($v[1])_$($v[2])_$($v[3])"
     $ext = [System.IO.Path]::GetExtension($FileName).ToUpper()
-    $IsMSI = $ext -eq ".MSI" -or $ext -eq ".MSI.BAT"
+    $IsMSI = $ext -eq ".MSI" -or $ext -eq ".BAT"
     $FileNameNoPathNoExt = [System.IO.Path]::GetFileNameWithoutExtension($FileName)
     $FileNameNoPath = [System.IO.Path]::GetFileName($FileName)
     $md5File = $FileName + ".md5"
