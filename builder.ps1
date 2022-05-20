@@ -66,8 +66,9 @@ function Get-UGuid() {
 }
 $global:_CVersion = ""
 function Get-CodeVersion() {
+    $IsRelease = IsRelease
     if ($global:_CVersion -eq "") {
-        if (IsRelease) {
+        if ($IsRelease) {
             $u = ""
         } else {
             $u = ".$(Get-CodeOwner)"
@@ -126,7 +127,8 @@ $NewRequestParams = @{
 }
 $request = $null;
 function Copy-Files-To-CloudChannel {
-    if (IsRelease) {
+    $IsRelease = IsRelease
+    if ($IsRelease) {
         $v = Get-Version
         $rootFolder = "FIELDPRO_V$($v[0])"
         $releaseFolder = "FIELDPRO V$($v[0]) $($v[1]).$($v[2]).$($v[3])"
@@ -184,7 +186,8 @@ function Copy-File-ToCloud {
     Invoke-Command $command
     $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""$($md5File)"" ""syncconfig:/ReleaseSocket/$(Get-UGuid)"""
     Invoke-Command $command
-    if (IsRelease -and ($IsMSI -or $IsBAT)) {
+    $IsRelease = IsRelease
+    if ($IsRelease -and ($IsMSI -or $IsBAT)) {
         if ($IsBAT){
             $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copyto ""syncconfig:/ReleaseSocket/$(Get-UGuid)/$($FileNameNoPath)"" ""syncconfig:/$($rootFolder)/$($releaseFolder)/$($FileNameNoPath)"""
             Invoke-Command $command
