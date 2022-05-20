@@ -47,6 +47,9 @@ $metadatainstall = "$($installs)METADATAGENERATOR_WIX\BUILD_RELEASE.bat";
 $FIPinstall = "$($installs)FIELDPRO_WIX\BUILD_RELEASE.bat";
 $machine = $env:computername.ToUpper()
 $vspath = "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\devenv.com"
+function IsRelease() {
+    return ($request.BuildType -eq 2)
+}
 $global:__UGuid = ""
 function Get-UGuid() {
     if ($global:__UGuid -eq "") {
@@ -64,14 +67,18 @@ function Get-UGuid() {
 $global:_CVersion = ""
 function Get-CodeVersion() {
     if ($global:_CVersion -eq "") {
-        $u = Get-CodeOwner
+        if (IsRelease) {
+            $u = ""
+        } else {
+            $u = ".$(Get-CodeOwner)"
+        }
         $v = Get-Version
         $v1 = $v[0]
         $v2 = $v[1]
         $v3 = $v[2]
         $v4 = $v[3]
         $d = (Get-Date).ToString("yyyy")
-        $global:_CVersion = "$($d).$($v1).$($v2).$($v3).$($v4).$($u)"
+        $global:_CVersion = "$($d).$($v1).$($v2).$($v3).$($v4)$($u)"
     }
     return $global:_CVersion
 }
@@ -119,7 +126,7 @@ $NewRequestParams = @{
 }
 $request = $null;
 function Copy-Files-To-CloudChannel {
-    if ($request.BuildType -eq 2) {
+    if (IsRelease) {
         $v = Get-Version
         $rootFolder = "FIELDPRO_V$($v[0])"
         $releaseFolder = "FIELDPRO V$($v[0]) $($v[1]).$($v[2]).$($v[3])"
@@ -162,7 +169,8 @@ function Copy-File-ToCloud {
     $releaseFolder = "FIELDPRO V$($v[0]) $($v[1]).$($v[2]).$($v[3])"
     $prefix = "_$($v[0])_$($v[1])_$($v[2])_$($v[3])"
     $ext = [System.IO.Path]::GetExtension($FileName).ToUpper()
-    $IsMSI = $ext -eq ".MSI" -or $ext -eq ".BAT"
+    $IsMSI = $ext -eq ".MSI"
+    $IsBAT = $ext -eq ".BAT"
     $FileNameNoPathNoExt = [System.IO.Path]::GetFileNameWithoutExtension($FileName)
     $FileNameNoPath = [System.IO.Path]::GetFileName($FileName)
     $md5File = $FileName + ".md5"
@@ -176,11 +184,18 @@ function Copy-File-ToCloud {
     Invoke-Command $command
     $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""$($md5File)"" ""syncconfig:/ReleaseSocket/$(Get-UGuid)"""
     Invoke-Command $command
-    if ($request.BuildType -eq 2 -and $IsMSI) {
-        $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copyto ""syncconfig:/ReleaseSocket/$(Get-UGuid)/$($FileNameNoPath)"" ""syncconfig:/$($rootFolder)/$($releaseFolder)/$($FileNameNoPathNoExt)$($prefix).msi"""
-        Invoke-Command $command
-        $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copyto ""syncconfig:/ReleaseSocket/$(Get-UGuid)/$($FileNameNoPath).md5"" ""syncconfig:/$($rootFolder)/$($releaseFolder)/$($FileNameNoPathNoExt)$($prefix).msi.md5"""
-        Invoke-Command $command
+    if (IsRelease -and ($IsMSI -or $IsBAT)) {
+        if ($IsBAT){
+            $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copyto ""syncconfig:/ReleaseSocket/$(Get-UGuid)/$($FileNameNoPath)"" ""syncconfig:/$($rootFolder)/$($releaseFolder)/$($FileNameNoPath)"""
+            Invoke-Command $command
+            $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copyto ""syncconfig:/ReleaseSocket/$(Get-UGuid)/$($FileNameNoPath).md5"" ""syncconfig:/$($rootFolder)/$($releaseFolder)/$($FileNameNoPath).md5"""
+            Invoke-Command $command
+        } else {
+            $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copyto ""syncconfig:/ReleaseSocket/$(Get-UGuid)/$($FileNameNoPath)"" ""syncconfig:/$($rootFolder)/$($releaseFolder)/$($FileNameNoPathNoExt)$($prefix).msi"""
+            Invoke-Command $command
+            $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copyto ""syncconfig:/ReleaseSocket/$(Get-UGuid)/$($FileNameNoPath).md5"" ""syncconfig:/$($rootFolder)/$($releaseFolder)/$($FileNameNoPathNoExt)$($prefix).msi.md5"""
+            Invoke-Command $command
+        }
     }
 
     if ($DeleteFile) {
