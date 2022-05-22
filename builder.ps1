@@ -70,7 +70,8 @@ function Get-CodeVersion() {
     if ($global:_CVersion -eq "") {
         if ($IsRelease) {
             $u = ""
-        } else {
+        }
+        else {
             $u = ".$(Get-CodeOwner)"
         }
         $v = Get-Version
@@ -170,11 +171,14 @@ function Copy-File-ToCloud {
     $rootFolder = "FIELDPRO_V$($v[0])"
     $releaseFolder = "FIELDPRO V$($v[0]) $($v[1]).$($v[2]).$($v[3])"
     $prefix = "_$($v[0])_$($v[1])_$($v[2])_$($v[3])"
-    $ext = [System.IO.Path]::GetExtension($FileName).ToUpper()
-    $IsMSI = $ext -eq ".MSI"
-    $IsBAT = $ext -eq ".BAT"
-    $FileNameNoPathNoExt = [System.IO.Path]::GetFileNameWithoutExtension($FileName)
+
     $FileNameNoPath = [System.IO.Path]::GetFileName($FileName)
+    $NameParts = $FileNameNoPath.Split(".")
+    $FileNameNoPathNoExt = $NameParts[0]
+    $AllExts = $NameParts[1..($NameParts.Length - 1)] -join "."
+
+    $IsMSI = $NameParts.Contains("msi") -or $NameParts.Contains("bat")
+
     $md5File = $FileName + ".md5"
     Remove-File $md5File
     $hash = Get-FileHash $FileName -Algorithm MD5
@@ -187,18 +191,11 @@ function Copy-File-ToCloud {
     $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copy ""$($md5File)"" ""syncconfig:/ReleaseSocket/$(Get-UGuid)"""
     Invoke-Command $command
     $IsRelease = IsRelease
-    if ($IsRelease -and ($IsMSI -or $IsBAT)) {
-        if ($IsBAT){
-            $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copyto ""syncconfig:/ReleaseSocket/$(Get-UGuid)/$($FileNameNoPath)"" ""syncconfig:/$($rootFolder)/$($releaseFolder)/$($FileNameNoPath)"""
-            Invoke-Command $command
-            $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copyto ""syncconfig:/ReleaseSocket/$(Get-UGuid)/$($FileNameNoPath).md5"" ""syncconfig:/$($rootFolder)/$($releaseFolder)/$($FileNameNoPath).md5"""
-            Invoke-Command $command
-        } else {
-            $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copyto ""syncconfig:/ReleaseSocket/$(Get-UGuid)/$($FileNameNoPath)"" ""syncconfig:/$($rootFolder)/$($releaseFolder)/$($FileNameNoPathNoExt)$($prefix).msi"""
-            Invoke-Command $command
-            $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copyto ""syncconfig:/ReleaseSocket/$(Get-UGuid)/$($FileNameNoPath).md5"" ""syncconfig:/$($rootFolder)/$($releaseFolder)/$($FileNameNoPathNoExt)$($prefix).msi.md5"""
-            Invoke-Command $command
-        }
+    if ($IsRelease -and $IsMSI) {
+        $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copyto ""syncconfig:/ReleaseSocket/$(Get-UGuid)/$($FileNameNoPath)"" ""syncconfig:/$($rootFolder)/$($releaseFolder)/$($FileNameNoPathNoExt)$($prefix).$($AllExts)"""
+        Invoke-Command $command
+        $command = "$($PSScriptRoot)\bin\rclone.exe --config ""$($cfg)"" copyto ""syncconfig:/ReleaseSocket/$(Get-UGuid)/$($FileNameNoPath).md5"" ""syncconfig:/$($rootFolder)/$($releaseFolder)/$($FileNameNoPathNoExt)$($prefix).$($AllExts).md5"""
+        Invoke-Command $command
     }
 
     if ($DeleteFile) {
