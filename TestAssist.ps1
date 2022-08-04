@@ -42,6 +42,7 @@ while ($true) {
                     if (!(Test-File-Valid -Path $file)) {
                         $StartTest = $false
                         Add-Content -Path $LogFile -Value "$(Get-Date): file is not ready: $($file)"
+                        Write-Output "file hash is invalid: $($file)"
                         break
                     } else {
                         $md5 = $file + ".md5"
@@ -92,6 +93,13 @@ while ($true) {
     #Cleanup:
     $MinimumAge = (Get-Date).AddDays(-5)
     $folders = Get-ChildItem -Path $TestDirectory -Directory | Where-Object {$_.LastWriteTime -lt $MinimumAge}
+    foreach ($folder in $folders)
+    {
+        Remove-Item -LiteralPath $folder.FullName -Force -Recurse
+    }
+
+    $MinimumAge = (Get-Date).AddDays(-10)
+    $folders = Get-ChildItem -Path $WorkDirectory -Directory | Where-Object {$_.LastWriteTime -lt $MinimumAge}
     foreach ($folder in $folders)
     {
         Remove-Item -LiteralPath $folder.FullName -Force -Recurse
