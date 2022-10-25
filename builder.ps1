@@ -36,14 +36,12 @@ $mxinstall = "$($installs)ONSITE_MODULES_WIX\BUILD_RELEASE.bat";
 $mxinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_MODELS_ONSITE_REAL_TIME.msi";
 $onsiteinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_ONSITE.msi";
 $historianinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_HISTORIAN.msi";
-$metadatainstallRes = "$($installs)METADATAGENERATOR_WIX\bin\METADATAGENERATOR.msi";
 $FIPinstallRes = "$($installs)FIELDPRO_WIX\bin\FIELDPRO.msi";
 $FIPinstallResBat = "$($installs)FIELDPRO_WIX\bin\FIELDPRO.msi.bat";
 $FIPPortable = "$($builddir)Release.zip";
 $MXPortable = "$($builddir)Modules.zip";
-$TestRequested = $mxinstallRes, $onsiteinstallRes, $historianinstallRes, $metadatainstallRes, $FIPinstallRes, $FIPPortable, $MXPortable, $bstinfo
+$TestRequested = $mxinstallRes, $onsiteinstallRes, $historianinstallRes, $FIPinstallRes, $FIPPortable, $MXPortable, $bstinfo
 #=======================================
-$metadatainstall = "$($installs)METADATAGENERATOR_WIX\BUILD_RELEASE.bat";
 $FIPinstall = "$($installs)FIELDPRO_WIX\BUILD_RELEASE.bat";
 $machine = $env:computername.ToUpper()
 $vspath = "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\devenv.com"
@@ -587,18 +585,6 @@ function Invoke-CodeBuilder {
     if (IsBuildCancelled) { return }
     $TestRequested | Out-File $($statusFile) -Encoding ascii
     Copy-File-ToCloud $statusFile "Sending test signal..."
-    if (IsBuildCancelled) { return }
-    #=======================================================
-    # making METADATA installation
-    #=======================================================
-    Write-State "Building metadata..."
-    Remove-File $metadatainstallRes
-    Invoke-Command "$($metadatainstall)"
-    if (IsBuildCancelled) { return }
-    if (!(Test-File $metadatainstallRes "Metadata installation build")) {
-        return
-    }
-    Copy-File-ToCloud $metadatainstallRes "Uploading metadata..."
     if (IsBuildCancelled) { return }
     #=======================================================
     # making FIP installation
