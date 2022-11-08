@@ -522,6 +522,12 @@ function Invoke-CodeBuilder {
     Invoke-Command $MigrateCommand
     if (IsBuildCancelled) { return }
 
+    Write-State "Generating template OIF..."
+    $OIFCommand = "$($Migrator) $($DSN) gen_templ_oif"
+    Invoke-Command $OIFCommand
+    Copy-Item "$($buildExedir)Template.oif" -Destination "$($mxbuildExedir)"
+    if (IsBuildCancelled) { return }
+
     Write-State "Backup database..."
     Remove-File $DBForInstall
     Invoke-Command $BackupCommand
