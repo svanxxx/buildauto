@@ -18,6 +18,7 @@ $statusFile = "$($builddir)status.txt"
 $RequestFile = "$($builddir)request.txt"
 $VersionFile = "$($workdir)Common\AppVersions.h"
 $temp = [System.IO.Path]::GetTempPath();
+$ProgramData = "C:\ProgramData\Fieldpro";
 $outfile = "$($temp)buildoutput.log";
 $fipoutfile = "$($temp)fipbuildoutput.log";
 $cxoutfile = "$($temp)cxbuildoutput.log";
@@ -242,6 +243,13 @@ function Invoke-Cleanup([bool]$weboutput) {
         $result = $true
 
         Write-Host "Cleanup..."
+
+        Write-Host "Cleaning up program data folder..."
+        $loc = Get-Location
+        Set-Location $ProgramData
+        Remove-Item * -Recurse -Force -ErrorAction SilentlyContinue
+        Set-Location $loc
+
         Write-Host "Removing old msi files..."
         Get-ChildItem "$($installs)" -Include *.msi -Recurse | Remove-Item
 
