@@ -1,4 +1,5 @@
 $TestDirectory = "H:\My Drive\Installations\ReleaseSocket\"
+#$TestDirectory = "\\orion\FiP Installations\ReleaseSocket\"
 $WorkDirectory = "G:\ReleaseSocket\Stack\"
 function Test-File-Valid {
     param (
@@ -34,6 +35,7 @@ while ($true) {
             Write-Host "Detected goal directory: $($directory)"
             $Files = Get-Content -Path $status
             if ($Files -is [array]) {
+                $Files = $Files|Where-Object{($_ -like "*.txt") -or ($_ -like "*.msi")}
                 $StartTest = $true
                 $hashes = [System.Collections.ArrayList]::new()
                 for ($f = 0; $f -lt $Files.Length; $f++) {
