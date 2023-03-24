@@ -37,8 +37,9 @@ $mxinstall = "$($installs)ONSITE_MODULES_WIX\BUILD_RELEASE.bat";
 $mxinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_MODELS_ONSITE_REAL_TIME.msi";
 $onsiteinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_ONSITE.msi";
 $historianinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_HISTORIAN.msi";
-$FIPinstallRes = "$($installs)FIELDPRO_WIX\bin\FIELDPRO.msi";
-$FIPinstallResBat = "$($installs)FIELDPRO_WIX\bin\FIELDPRO.msi.bat";
+$FIPinstallResOrig = "$($installs)FIELDPRO_WIX\bin\FIELDPRO.msi";
+$FIPinstallRes = "$($installs)FIELDPRO_WIX\bin\FIELDPRO_SERVER.msi";
+$FIPinstallResBat = "$($installs)FIELDPRO_WIX\bin\FIELDPRO_SERVER.msi.bat";
 $FIPPortable = "$($builddir)Release.zip";
 $MXPortable = "$($builddir)Modules.zip";
 $TestRequested = $mxinstallRes, $onsiteinstallRes, $historianinstallRes, $FIPinstallRes, $FIPPortable, $MXPortable, $bstinfo
@@ -604,8 +605,14 @@ function Invoke-CodeBuilder {
     # making FIP installation
     #=======================================================
     Write-State "FIP installation..."
+    
     Remove-File $FIPinstallRes
+    Remove-File $FIPinstallResOrig
+
     Invoke-Command "$($FIPinstall)"
+
+    Rename-Item -Path $FIPinstallResOrig -NewName $FIPinstallRes
+
     if (IsBuildCancelled) { return }
     if (!(Test-File $FIPinstallRes "FIP installation build")) {
         return
