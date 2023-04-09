@@ -18,6 +18,7 @@ $statusFile = "$($builddir)status.txt"
 $RequestFile = "$($builddir)request.txt"
 $VersionFile = "$($workdir)Common\AppVersions.h"
 $temp = [System.IO.Path]::GetTempPath();
+$ProgramData = "C:\ProgramData\Fieldpro";
 $outfile = "$($temp)buildoutput.log";
 $fipoutfile = "$($temp)fipbuildoutput.log";
 $cxoutfile = "$($temp)cxbuildoutput.log";
@@ -36,14 +37,13 @@ $mxinstall = "$($installs)ONSITE_MODULES_WIX\BUILD_RELEASE.bat";
 $mxinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_MODELS_ONSITE_REAL_TIME.msi";
 $onsiteinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_ONSITE.msi";
 $historianinstallRes = "$($installs)ONSITE_MODULES_WIX\bin\FIELDPRO_HISTORIAN.msi";
-$metadatainstallRes = "$($installs)METADATAGENERATOR_WIX\bin\METADATAGENERATOR.msi";
-$FIPinstallRes = "$($installs)FIELDPRO_WIX\bin\FIELDPRO.msi";
-$FIPinstallResBat = "$($installs)FIELDPRO_WIX\bin\FIELDPRO.msi.bat";
+$FIPinstallResOrig = "$($installs)FIELDPRO_WIX\bin\FIELDPRO.msi";
+$FIPinstallRes = "$($installs)FIELDPRO_WIX\bin\FIELDPRO_SERVER.msi";
+$FIPinstallResBat = "$($installs)FIELDPRO_WIX\bin\FIELDPRO_SERVER.msi.bat";
 $FIPPortable = "$($builddir)Release.zip";
 $MXPortable = "$($builddir)Modules.zip";
-$TestRequested = $mxinstallRes, $onsiteinstallRes, $historianinstallRes, $metadatainstallRes, $FIPinstallRes, $FIPPortable, $MXPortable, $bstinfo
+$TestRequested = $mxinstallRes, $onsiteinstallRes, $historianinstallRes, $FIPinstallRes, $FIPPortable, $MXPortable, $bstinfo
 #=======================================
-$metadatainstall = "$($installs)METADATAGENERATOR_WIX\BUILD_RELEASE.bat";
 $FIPinstall = "$($installs)FIELDPRO_WIX\BUILD_RELEASE.bat";
 $machine = $env:computername.ToUpper()
 $vspath = "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\devenv.com"
@@ -244,6 +244,13 @@ function Invoke-Cleanup([bool]$weboutput) {
         $result = $true
 
         Write-Host "Cleanup..."
+
+        Write-Host "Cleaning up program data folder..."
+        $loc = Get-Location
+        Set-Location $ProgramData
+        Remove-Item * -Recurse -Force -ErrorAction SilentlyContinue
+        Set-Location $loc
+
         Write-Host "Removing old msi files..."
         Get-ChildItem "$($installs)" -Include *.msi -Recurse | Remove-Item
 
@@ -524,6 +531,12 @@ function Invoke-CodeBuilder {
     Invoke-Command $MigrateCommand
     if (IsBuildCancelled) { return }
 
+    Write-State "Generating template OIF..."
+    $OIFCommand = "$($Migrator) $($DSN) gen_templ_oif"
+    Invoke-Command $OIFCommand
+    Copy-Item "$($buildExedir)Template.oif" -Destination "$($mxbuildExedir)"
+    if (IsBuildCancelled) { return }
+
     Write-State "Backup database..."
     Remove-File $DBForInstall
     Invoke-Command $BackupCommand
@@ -589,23 +602,17 @@ function Invoke-CodeBuilder {
     Copy-File-ToCloud $statusFile "Sending test signal..."
     if (IsBuildCancelled) { return }
     #=======================================================
-    # making METADATA installation
-    #=======================================================
-    Write-State "Building metadata..."
-    Remove-File $metadatainstallRes
-    Invoke-Command "$($metadatainstall)"
-    if (IsBuildCancelled) { return }
-    if (!(Test-File $metadatainstallRes "Metadata installation build")) {
-        return
-    }
-    Copy-File-ToCloud $metadatainstallRes "Uploading metadata..."
-    if (IsBuildCancelled) { return }
-    #=======================================================
     # making FIP installation
     #=======================================================
     Write-State "FIP installation..."
+    
     Remove-File $FIPinstallRes
+    Remove-File $FIPinstallResOrig
+
     Invoke-Command "$($FIPinstall)"
+
+    Rename-Item -Path $FIPinstallResOrig -NewName $FIPinstallRes
+
     if (IsBuildCancelled) { return }
     if (!(Test-File $FIPinstallRes "FIP installation build")) {
         return
