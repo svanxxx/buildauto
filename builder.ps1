@@ -119,7 +119,7 @@ function GetIniParam([int]$Index) {
 $URL = GetIniParam(0)
 $ApiKey = GetIniParam(1)
 function Get-Headers {
-    return @{Authorization = "ApiKey $($ApiKey)" }
+    return @{"X-API-KEY" = "$($ApiKey)" }
 }
 $NewRequestParams = @{
     Uri     = $URL + "/api/catch?machine=" + $machine
