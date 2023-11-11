@@ -271,6 +271,9 @@ function Invoke-Cleanup([bool]$weboutput) {
         Remove-Item -Path "$($buildExedir)*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
         Remove-Item -Path "$($mxbuildLibdir)*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
         Remove-Item -Path "$($mxbuildExedir)*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
+        Remove-Item -Path "y:\.obj\*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
+        Remove-Item -Path "y:\eFieldpro\bin\*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue -Exclude .gitignore
+        Remove-Item -Path "y:\eFieldpro\API\bin\*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue -Exclude .gitignore
         Remove-Item -Path "y:\.git\index.lock" -Force -Confirm:$false -ErrorAction SilentlyContinue
         Write-Host "$(Get-Date)"
         if (IsBuildCancelled) {
