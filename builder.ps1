@@ -106,6 +106,25 @@ $ApiKey = GetIniParam(1)
 function Get-Headers {
     return @{"X-API-KEY" = "$($ApiKey)" }
 }
+function Invoke-Command([string]$Command) {
+    cmd /c "$($Command)" | Out-File $($outfile) -Append;
+}
+function Write-State([string]$txt) {
+    if ($txt.Length -gt 512) {
+        $txt = $txt.Substring(0, 512)
+    }
+    
+    $stamp = Get-Date -Format "HH:mm:ss"
+    $out = $stamp + ": " + $txt
+    $out | Out-File $($outfile) -Append;
+    $CommentRequestParams = @{
+        Uri     = $URL + "/api/comment?id=" + $request.id + "&comment=" + [uri]::EscapeDataString($txt)
+        Method  = "POST"
+        Headers = Get-Headers
+    }
+    $request = Invoke-RestMethod @CommentRequestParams
+    Write-Host $out;
+}
 function Lock-Usb {
     $Null = @(
         $LockRequestParams = @{
@@ -174,9 +193,6 @@ function Test-File([string]$FileName, [string]$ActionName) {
         }
     )
     return $result
-}
-function Invoke-Command([string]$Command) {
-    cmd /c "$($Command)" | Out-File $($outfile) -Append;
 }
 $NewRequestParams = @{
     Uri     = $URL + "/api/catch?machine=" + $machine
@@ -279,22 +295,6 @@ function Get-Version() {
         }
     }
     return $V
-}
-function Write-State([string]$txt) {
-    if ($txt.Length -gt 512) {
-        $txt = $txt.Substring(0, 512)
-    }
-    
-    $stamp = Get-Date -Format "HH:mm:ss"
-    $out = $stamp + ": " + $txt
-    $out | Out-File $($outfile) -Append;
-    $CommentRequestParams = @{
-        Uri     = $URL + "/api/comment?id=" + $request.id + "&comment=" + [uri]::EscapeDataString($txt)
-        Method  = "POST"
-        Headers = Get-Headers
-    }
-    $request = Invoke-RestMethod @CommentRequestParams
-    Write-Host $out;
 }
 function Invoke-Cleanup([bool]$weboutput) {
     $Null = @(
