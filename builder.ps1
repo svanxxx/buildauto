@@ -135,6 +135,8 @@ function Lock-Usb {
         $answer = Invoke-RestMethod @LockRequestParams
         if ($Null -eq $answer) {
             Write-State "Awating for signing usb lock..."
+        } else{
+            Write-State "Locking usb key: $($answer)"
         }
     )
     return $answer
@@ -161,6 +163,7 @@ function Install-Sign([string]$Path) {
             break
         }
         $timer = $timer + 1
+        Start-Sleep -Seconds 1
     }
     if ($null -eq $lock) {
         Write-State "Failed to lock signing usb key during 5 minutes"
@@ -170,6 +173,10 @@ function Install-Sign([string]$Path) {
     $connector = """$($usbip)"" attach -r $($request.signAddress) -b 3-2"
     Invoke-Command $connector
 
+    Write-State "Waiting for usb token to attach..."
+    Start-Sleep -Seconds 5
+
+    Write-State "Signing..."
     $Signer = """$($signtool)"" sign /f ""$($Cer)"" /csp ""eToken Base Cryptographic Provider"" /k ""[{{$($request.SignPass)}}]=$($request.SignContainer)"" /fd SHA256 /t http://timestamp.digicert.com ""$($Path)"""
     Invoke-Command $Signer
 
