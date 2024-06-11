@@ -174,7 +174,7 @@ function Install-Sign([string]$Path) {
     Invoke-Command $connector
 
     Write-State "Waiting for usb token to attach..."
-    Start-Sleep -Seconds 5
+    Start-Sleep -Seconds 10
 
     Write-State "Signing..."
     $Signer = """$($signtool)"" sign /f ""$($Cer)"" /csp ""eToken Base Cryptographic Provider"" /k ""[{{$($request.SignPass)}}]=$($request.SignContainer)"" /fd SHA256 /t http://timestamp.digicert.com ""$($Path)"""
