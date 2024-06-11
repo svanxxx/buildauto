@@ -23,6 +23,10 @@ $outfile = "$($temp)buildoutput.log";
 $fipoutfile = "$($temp)fipbuildoutput.log";
 $cxoutfile = "$($temp)cxbuildoutput.log";
 
+$usbip = "$($PSScriptRoot)\bin\usbip\usbip.exe"
+$signtool = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe"
+$Cer = "$($workdir)Installs\INPUT\Signing\cer.cer";
+
 $DBZip = "$($workdir)Installs\INPUT\Database\MSSQL_ETALON.zip";
 $DBForMigration = "$($workdir)Installs\INPUT\Database\MSSQL_ETALON.BAK";
 $RestoreCommand = "OSQL -S (local)\SQL2014 -E -Q ""RESTORE DATABASE $($DSN) FROM DISK = '$($DBForMigration)' WITH REPLACE"""
@@ -92,6 +96,69 @@ function Compress-Directory {
     $Zipper = "$($PSScriptRoot)\bin\7za.exe a -tzip -r -mx=1 -mm=Deflate ""$($DestinationPath)"" ""$($Path)\*"""
     cmd /c "$($Zipper)"
 }
+function GetIniParam([int]$Index) {
+    $file = $PSScriptRoot + "\builder.ini"
+    $content = Get-Content $file
+    return $content[$Index]
+}
+$URL = GetIniParam(0)
+$ApiKey = GetIniParam(1)
+function Get-Headers {
+    return @{"X-API-KEY" = "$($ApiKey)" }
+}
+function Lock-Usb {
+    $Null = @(
+        $LockRequestParams = @{
+            Uri     = $URL + "/api/lockusb"
+            Method  = "GET"
+            Headers = Get-Headers
+        }
+        $answer = Invoke-RestMethod @LockRequestParams
+        if ($Null -eq $answer) {
+            Write-State "Awating for signing usb lock..."
+        }
+    )
+    return $answer
+}
+
+function Unlock-Usb([string]$id) {
+    $Null = @(
+        $UnLockRequestParams = @{
+            Uri     = $URL + "/api/unlockusb?id=$($id)"
+            Method  = "GET"
+            Headers = Get-Headers
+        }
+        $answer = Invoke-RestMethod @UnLockRequestParams
+        Write-State "Unlocking usb key: $($answer)"
+    )
+}
+
+function Install-Sign([string]$Path) {
+    $timer = 0
+    $lock = $null
+    while ($timer -le 300) {
+        $lock = Lock-Usb
+        if ($null -ne $lock) {
+            break
+        }
+        $timer = $timer + 1
+    }
+    if ($null -eq $lock) {
+        Write-State "Failed to lock signing usb key during 5 minutes"
+        return
+    }
+    
+    $connector = """$($usbip)"" attach -r $($request.signAddress) -b 3-2"
+    Invoke-Command $connector
+
+    $Signer = """$($signtool)"" sign /f ""$($Cer)"" /csp ""eToken Base Cryptographic Provider"" /k ""[{{$($request.SignPass)}}]=$($request.SignContainer)"" /fd SHA256 /t http://timestamp.digicert.com ""$($Path)"""
+    Invoke-Command $Signer
+
+    $disconnector = """$($usbip)"" -d detach -p 0"
+    Invoke-Command $disconnector
+
+    Unlock-Usb $lock
+}
 function Remove-File([string]$FileName) {
     if (Test-Path -Path $FileName) {
         Remove-Item -Path $FileName
@@ -110,16 +177,6 @@ function Test-File([string]$FileName, [string]$ActionName) {
 }
 function Invoke-Command([string]$Command) {
     cmd /c "$($Command)" | Out-File $($outfile) -Append;
-}
-function GetIniParam([int]$Index) {
-    $file = $PSScriptRoot + "\builder.ini"
-    $content = Get-Content $file
-    return $content[$Index]
-}
-$URL = GetIniParam(0)
-$ApiKey = GetIniParam(1)
-function Get-Headers {
-    return @{"X-API-KEY" = "$($ApiKey)" }
 }
 $NewRequestParams = @{
     Uri     = $URL + "/api/catch?machine=" + $machine
@@ -559,16 +616,19 @@ function Invoke-CodeBuilder {
     if (!(Test-File $mxinstallRes "MX installation build")) {
         return
     }
+    Install-Sign $mxinstallRes
     Copy-File-ToCloud $mxinstallRes "Uploading MX..."
     if (IsBuildCancelled) { return }
     if (!(Test-File $onsiteinstallRes "Onsite installation build")) {
         return
     }
+    Install-Sign $onsiteinstallRes
     Copy-File-ToCloud $onsiteinstallRes "Uploading Onsite..."
     if (IsBuildCancelled) { return }
     if (!(Test-File $historianinstallRes "Historian installation build")) {
         return
     }
+    Install-Sign $historianinstallRes
     Copy-File-ToCloud $historianinstallRes "Uploading Historian..."
     if (IsBuildCancelled) { return }
     #=======================================================
@@ -620,6 +680,7 @@ function Invoke-CodeBuilder {
     if (!(Test-File $FIPinstallRes "FIP installation build")) {
         return
     }
+    Install-Sign $FIPinstallRes
     Copy-File-ToCloud $FIPinstallRes "Uploading FIP installation..."
     if (IsBuildCancelled) { return }
 
