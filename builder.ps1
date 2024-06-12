@@ -133,7 +133,7 @@ function Lock-Usb {
             Headers = Get-Headers
         }
         $answer = Invoke-RestMethod @LockRequestParams
-        if ($Null -eq $answer) {
+        if ([string]::IsNullOrEmpty($answer)) {
             Write-State "Awating for signing usb lock..."
         } else{
             Write-State "Locking usb key: $($answer)"
@@ -159,7 +159,7 @@ function Install-Sign([string]$Path) {
     $lock = $null
     while ($timer -le 300) {
         $lock = Lock-Usb
-        if ($null -ne $lock) {
+        if (-not [string]::IsNullOrEmpty($lock)) {
             break
         }
         $timer = $timer + 1
