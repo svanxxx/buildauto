@@ -177,7 +177,7 @@ function Install-Sign([string]$Path) {
     Start-Sleep -Seconds 10
 
     Write-State "Signing..."
-    $Signer = """$($signtool)"" sign /f ""$($Cer)"" /csp ""eToken Base Cryptographic Provider"" /k ""[{{$($request.SignPass)}}]=$($request.SignContainer)"" /fd SHA256 /t http://timestamp.digicert.com /d ""FIELDPRO Application"" ""$($Path)"""
+    $Signer = """$($signtool)"" sign /f ""$($Cer)"" /csp ""eToken Base Cryptographic Provider"" /k ""[{{$($request.SignPass)}}]=$($request.SignContainer)"" /fd SHA256 /t http://timestamp.digicert.com /d ""FIELDPRO® Application"" ""$($Path)"""
     Invoke-Command $Signer
 
     $disconnector = """$($usbip)"" -d detach -p 0"
