@@ -109,6 +109,14 @@ function Get-Headers {
 function Invoke-Command([string]$Command) {
     cmd /c "$($Command)" | Out-File $($outfile) -Append;
 }
+function FailBuild {
+    $FaileRequestParams = @{
+        Uri     = $URL + "/api/fail?id=" + $request.id
+        Method  = "POST"
+        Headers = Get-Headers
+    }
+    Invoke-RestMethod @FaileRequestParams
+}
 function Write-State([string]$txt) {
     if ($txt.Length -gt 512) {
         $txt = $txt.Substring(0, 512)
@@ -135,11 +143,28 @@ function Lock-Usb {
         $answer = Invoke-RestMethod @LockRequestParams
         if ([string]::IsNullOrEmpty($answer)) {
             Write-State "Awating for signing usb lock..."
-        } else{
+        }
+        else {
             Write-State "Locking usb key: $($answer)"
         }
     )
     return $answer
+}
+
+function Wait-Usb {
+    $Command = "pnputil.exe /enum-devices | findstr ""Device Description"" | findstr ""eToken"""
+    $attempt = 1
+    do {
+        Write-State "Waiting for usb token to appear in the system. Attempt ($($attempt))..."
+        Start-Sleep -Seconds 2
+        $output = &"cmd.exe" /c "$($Command)"
+        $attempt = $attempt + 1
+        if ($attempt -gt 200) {
+            Invoke-LogAndExit -Log $outfile -Fail $true
+            return $false
+        }
+    } while ($Null -eq $output)
+    return $true
 }
 
 function Unlock-Usb([string]$id) {
@@ -167,14 +192,15 @@ function Install-Sign([string]$Path) {
     }
     if ($null -eq $lock) {
         Write-State "Failed to lock signing usb key during 5 minutes"
-        return
+        return $false
     }
     
     $connector = """$($usbip)"" attach -r $($request.signAddress) -b 3-2"
     Invoke-Command $connector
 
-    Write-State "Waiting for usb token to attach..."
-    Start-Sleep -Seconds 10
+    if (-not (Wait-Usb)) {
+        return $false
+    }
 
     Write-State "Signing..."
     $Signer = """$($signtool)"" sign /f ""$($Cer)"" /csp ""eToken Base Cryptographic Provider"" /k ""[{{$($request.SignPass)}}]=$($request.SignContainer)"" /fd SHA256 /t http://timestamp.digicert.com /d ""FIELDPRO® Application"" ""$($Path)"""
@@ -184,6 +210,8 @@ function Install-Sign([string]$Path) {
     Invoke-Command $disconnector
 
     Unlock-Usb $lock
+
+    return $true
 }
 function Remove-File([string]$FileName) {
     if (Test-Path -Path $FileName) {
@@ -359,14 +387,6 @@ function IsBuildCancelled {
         }
     )
     return $answer
-}
-function FailBuild {
-    $FaileRequestParams = @{
-        Uri     = $URL + "/api/fail?id=" + $request.id
-        Method  = "POST"
-        Headers = Get-Headers
-    }
-    Invoke-RestMethod @FaileRequestParams
 }
 function FinishBuild {
     $FinishRequestParams = @{
@@ -623,19 +643,26 @@ function Invoke-CodeBuilder {
     if (!(Test-File $mxinstallRes "MX installation build")) {
         return
     }
-    Install-Sign $mxinstallRes
+    if (!(Install-Sign $mxinstallRes)) {
+        return
+    }
     Copy-File-ToCloud $mxinstallRes "Uploading MX..."
     if (IsBuildCancelled) { return }
     if (!(Test-File $onsiteinstallRes "Onsite installation build")) {
         return
     }
-    Install-Sign $onsiteinstallRes
+    if (!(Install-Sign $onsiteinstallRes)) {
+        return
+    }
     Copy-File-ToCloud $onsiteinstallRes "Uploading Onsite..."
     if (IsBuildCancelled) { return }
     if (!(Test-File $historianinstallRes "Historian installation build")) {
         return
     }
-    Install-Sign $historianinstallRes
+    if (!(Install-Sign $historianinstallRes)) {
+        return
+    }
+    
     Copy-File-ToCloud $historianinstallRes "Uploading Historian..."
     if (IsBuildCancelled) { return }
     #=======================================================
@@ -687,7 +714,9 @@ function Invoke-CodeBuilder {
     if (!(Test-File $FIPinstallRes "FIP installation build")) {
         return
     }
-    Install-Sign $FIPinstallRes
+    if (!(Install-Sign $FIPinstallRes)) {
+        return
+    }
     Copy-File-ToCloud $FIPinstallRes "Uploading FIP installation..."
     if (IsBuildCancelled) { return }
 
