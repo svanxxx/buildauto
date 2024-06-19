@@ -11,6 +11,7 @@ $buildExedir = "$($workdir)Release.exe\";
 $buildExeFile = "$($workdir)Release.exe\Fieldpro.exe";
 $bstinfo = "$($buildExedir)BSTRequestInfo.txt";
 $Migrator = "$($buildExedir)MigrateDB.exe";
+$SiteManager = "$($buildExedir)FieldproSiteManager.exe";
 $mxbuildLibdir = "$($workdir)Modules.32\Release.lib\";
 $mxbuildExedir = "$($workdir)Modules.32\Release.exe\";
 $bstfile = "$($workdir)Common\BSTUserName.h"
@@ -705,6 +706,10 @@ function Invoke-CodeBuilder {
     
     Remove-File $FIPinstallRes
     Remove-File $FIPinstallResOrig
+
+    if (!(Install-Sign $SiteManager)) {
+        return
+    }
 
     Invoke-Command "$($FIPinstall)"
 
