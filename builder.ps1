@@ -181,6 +181,11 @@ function Unlock-Usb([string]$id) {
 }
 
 function Install-Sign([string]$Path) {
+    $IsRelease = IsRelease
+    if (-not $IsRelease) {
+        return $true
+    }
+
     $timer = 0
     $lock = $null
     while ($timer -le 300) {
