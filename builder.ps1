@@ -183,6 +183,7 @@ function Unlock-Usb([string]$id) {
 function Install-Sign([string]$Path) {
     $IsRelease = IsRelease
     if (-not $IsRelease) {
+        Write-State "Signing skipped (not a release)"
         return $true
     }
 
