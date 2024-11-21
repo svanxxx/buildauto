@@ -510,6 +510,7 @@ function Invoke-CodeCompilation([string]$Solution, [string]$BuildLog) {
                 }
             }
             if ($errors -lt 1) {
+                Write-State $builderr
                 Write-State "Build failed - unknown error, see logs for details"
                 $errors = 1
             }
