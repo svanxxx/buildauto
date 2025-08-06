@@ -1,5 +1,6 @@
 ﻿$workdir = "Y:\";
 $builddir = "$($workdir)Projects.32\";
+$coredir = "$($workdir)Core\";
 $buildLibdir = "$($workdir)Release.lib\";
 $buildExedir = "$($workdir)Release.exe\";
 $buildObjdir = "$($workdir).obj\";
@@ -24,16 +25,14 @@ $svc = New-WebServiceProxy –Uri ‘http://192.168.0.1/taskmanager/trservice.as
 $request = $null;
 $vspath = """C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.com"""
 
-function Write-State([string]$txt)
-{
+function Write-State([string]$txt) {
     $stamp = Get-Date -Format "HH:mm:ss"
-    $out = $stamp+": "+$txt
+    $out = $stamp + ": " + $txt
     $out | Out-File $($outfile) -Append;
     $svc.CommentBuild($request.ID, $txt);
     Write-Host $out;
 }
-function Invoke-Cleanup([bool]$weboutput)
-{
+function Invoke-Cleanup([bool]$weboutput) {
     Write-Host "Cleanup..."
     Write-Host "Removing Old msi files..."
     Get-ChildItem "$($installs)" -Include *.msi -Recurse | Remove-Item
@@ -65,18 +64,15 @@ function Invoke-Cleanup([bool]$weboutput)
     Remove-Item –path "y:\.git\index.lock" -Force -Confirm:$false -ErrorAction SilentlyContinue
     Write-Host "$(Get-Date)"
 }
-function Invoke-Code-Synch([string]$branch)
-{
+function Invoke-Code-Synch([string]$branch) {
     Write-State "Pull Code ($($branch)) From Git..."
-    Set-Location $($workdir);
+    Set-Location $($workdir)
     cmd /c "git reset --hard" | Out-File $($outfile) -Append;
     cmd /c "git checkout master" | Out-File $($outfile) -Append;
     cmd /c "git reset --hard" | Out-File $($outfile) -Append;
     $branches = git branch
-    For ($i=0; $i -lt $branches.Length; $i++) 
-    {
-        if ($branches[$i].Trim() -ne "* master")
-        {
+    For ($i = 0; $i -lt $branches.Length; $i++) {
+        if ($branches[$i].Trim() -ne "* master") {
             git branch -D "$($branches[$i].Trim())"
         }
     }
@@ -85,23 +81,31 @@ function Invoke-Code-Synch([string]$branch)
     cmd /c "git status" | Out-File $($outfile) -Append;
     cmd /c "git pull origin" | Out-File $($outfile) -Append;
     $currbranch = cmd /c "git rev-parse --abbrev-ref HEAD"
-    if ($currbranch -ne $branch)
-    {
+    if ($currbranch -ne $branch) {
         Write-Output "Error: current brach is: $($currbranch)"
         Write-Output "Expected: $($branch)"
         Write-State "Build aborted, GIT exception..."
         stop-computer
         exit
     }    
-    if ($svc.IsBuildCancelled($request.ID))
-    {
+    if ($svc.IsBuildCancelled($request.ID)) {
         Write-State "Build Cancelled..."
         stop-computer
         exit
     }
 }
-function Invoke-CodeCompilation([string]$solution, [string]$solutionOutfile, [string]$pathtolog)
-{
+function Invoke-DotNetRestore() {
+    Write-State "Restoring packages..."
+    Set-Location $($coredir)
+    $files = Get-ChildItem -Path $coredir -Recurse -Filter "*.csproj"
+    foreach ($file in $files) {
+        Set-Location $($file.DirectoryName)
+        $command = "dotnet restore $($file.Name)"
+        Write-State $command
+        cmd /c $command | Out-File $($outfile) -Append
+    }
+}
+function Invoke-CodeCompilation([string]$solution, [string]$solutionOutfile, [string]$pathtolog) {
     $buildcommand = "BuildConsole.exe ""$($solution)"" /rebuild /cfg=""Release|Mixed Platforms"" /NOLOGO /OUT=""$($solutionOutfile)"""
     Write-State "Building code $($solution)..."
 
@@ -109,46 +113,38 @@ function Invoke-CodeCompilation([string]$solution, [string]$solutionOutfile, [st
 
     $errors = 0
     $filecontent = Get-Content $($solutionOutfile)
-    if ($filecontent | Select-String -Pattern "Build FAILED.")
-    {
-        if ($filecontent | Select-String -Pattern "TRACKER : error TRK0002")
-        {
+    if ($filecontent | Select-String -Pattern "Build FAILED.") {
+        if ($filecontent | Select-String -Pattern "TRACKER : error TRK0002") {
             Write-State "re - building code after TRK0002..."
             cmd /c "$($buildcommand)"
             $filecontent = Get-Content $($solutionOutfile)
         }
         $builderr = $filecontent | Select-String -SimpleMatch "): error"
-        if ($builderr)
-        {
+        if ($builderr) {
             Write-State $builderr
             $errors = 1
         }        
-        elseif ($filecontent | Select-String -Pattern "Build FAILED.")
-        {
+        elseif ($filecontent | Select-String -Pattern "Build FAILED.") {
             Write-State "Build FAILED. Click to see the log."
             $errors = 1
         }
     }
-    if ($errors -gt 0)
-    {
+    if ($errors -gt 0) {
         Copy-Item $solutionOutfile -Destination "$($pathtolog)$($request.ID).log"
         $svc.FailBuild($request.ID)
         stop-computer
         exit
     }
 
-    if ($svc.IsBuildCancelled($request.ID))
-    {
+    if ($svc.IsBuildCancelled($request.ID)) {
         Write-State "Build Cancelled..."
         stop-computer
         exit
     }
 }
-function Invoke-CodeBuilder()
-{
+function Invoke-CodeBuilder() {
     Invoke-Cleanup $true
-    if ($svc.IsBuildCancelled($request.ID))
-    {
+    if ($svc.IsBuildCancelled($request.ID)) {
         Write-State "Build Cancelled..."
         stop-computer;
         exit;
@@ -166,8 +162,7 @@ function Invoke-CodeBuilder()
     "Build Heler:" | Out-File "$($outfile)"
     Write-State "Starting Build For $($ttid)..."
 
-    if ($svc.IsBuildCancelled($request.ID))
-    {
+    if ($svc.IsBuildCancelled($request.ID)) {
         Write-State "Build Cancelled..."
         stop-computer;
         exit;
@@ -176,6 +171,8 @@ function Invoke-CodeBuilder()
     Invoke-Code-Synch($branch)
 
     "#define _BSTUserName _T("".$($user)"")" | Out-File $($bstfile) -Encoding ascii
+
+    Invoke-DotNetRestore
 
     Invoke-CodeCompilation "$($builddir)All.sln" $fipoutfile $pathtolog
 
@@ -192,7 +189,7 @@ function Invoke-CodeBuilder()
     #=========================================================
     Start-Service "MSSQLSERVER"
     Write-State "Sending test request..."
-    Set-Location $($testdir);
+    Set-Location $($testdir)
     $testcmd = "RELEASE_TEST.BAT $($user) $($version) $($ttid) $($comment) $($vspath)";
     Write-State "$($testcmd)"
     cmd /c "$($testcmd)" | Out-File $($outfile) -Append;
@@ -225,8 +222,7 @@ function Invoke-CodeBuilder()
     Stop-Service "MSSQLSERVER"
 
     $fileerror = Select-String -Path $outfile -Pattern "^Error:" #line starts with 'error:'
-    if ($null -ne $fileerror)
-    {
+    if ($null -ne $fileerror) {
         Copy-Item $outfile -Destination "$($pathtolog)$($request.ID).log"
         $svc.FailBuild($request.ID);
         stop-computer;
@@ -249,12 +245,13 @@ function Invoke-CodeBuilder()
 function Invoke-GitMaintain {
     $lastdate = ""
     $todaydate = Get-Date -Format "dd:MM:yyyy"
-    if (Test-Path HKLM:\SOFTWARE\buldauto){
+    if (Test-Path HKLM:\SOFTWARE\buldauto) {
         $lastdate = Get-ItemProperty -Path HKLM:\SOFTWARE\buldauto -Name "gctime"
-    } else {
+    }
+    else {
         New-Item HKLM:\SOFTWARE\buldauto
     }
-    if ($todaydate -ne $lastdate.gctime){
+    if ($todaydate -ne $lastdate.gctime) {
         Set-ItemProperty -Path HKLM:\SOFTWARE\buldauto -Name "gctime" -Value "$($todaydate)"
         Set-Location y:
         git.exe reset --hard
@@ -263,20 +260,18 @@ function Invoke-GitMaintain {
         git.exe gc
     }
 }
-function Wait-Lan()
-{
-    while (-not (test-connection 192.168.0.1 -quiet)){Write-Output "waiting for connecton..."}
+function Wait-Lan() {
+    while (-not (test-connection 192.168.0.1 -quiet)) { Write-Output "waiting for connecton..." }
 }
 Wait-Lan
 cmd /c "\\192.168.0.1\Installs\Work\incprep.bat"
-while ($true)
-{
+while ($true) {
     Wait-Lan
     $request = $svc.getBuildRequest($env:computername.ToUpper())
-    if ($request.TTID -ne 0 -and -not [string]::IsNullOrEmpty($request.BRANCH))
-    {
+    if ($request.TTID -ne 0 -and -not [string]::IsNullOrEmpty($request.BRANCH)) {
         Invoke-CodeBuilder
-    } else {
+    }
+    else {
         Invoke-GitMaintain
     }
     Write-Host "$(Get-Date)"
