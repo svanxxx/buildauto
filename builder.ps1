@@ -51,7 +51,9 @@ $TestRequested = $mxinstallRes, $onsiteinstallRes, $historianinstallRes, $FIPins
 #=======================================
 $FIPinstall = "$($installs)FIELDPRO_WIX\BUILD_RELEASE.bat";
 $machine = $env:computername.ToUpper()
-$vspath = "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\devenv.com"
+#$vspath = "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\devenv.com"
+$vspath = "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\devenv.com"
+
 function IsRelease() {
     return ($request.BuildType -eq 2)
 }
@@ -800,6 +802,9 @@ if (Invoke-Self-Updater) {
     Restart-Computer
     return
 }
+
+Set-MpPreference -DisableRealtimeMonitoring $true
+
 while ($true) {
     try {
         $request = Invoke-RestMethod @NewRequestParams
