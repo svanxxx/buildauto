@@ -25,7 +25,7 @@ $fipoutfile = "$($temp)fipbuildoutput.log";
 $cxoutfile = "$($temp)cxbuildoutput.log";
 
 $usbip = "$($PSScriptRoot)\bin\usbip\usbip.exe"
-$signtool = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe"
+$signtool = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\signtool.exe"
 $Cer = "$($workdir)Installs\INPUT\Signing\cer.cer";
 
 $DBZip = "$($workdir)Installs\INPUT\Database\MSSQL_ETALON.zip";
