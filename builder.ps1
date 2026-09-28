@@ -576,6 +576,9 @@ function Invoke-CodeBuilder {
     # building phx
     #=======================================================
 
+    $command = "dotnet restore ""$($builddir)All.sln"""
+    Invoke-Command $command
+
     $res = Invoke-CodeCompilation -Solution "$($builddir)All.sln" -BuildLog $fipoutfile
     if (!$res) {
         return
@@ -598,6 +601,9 @@ function Invoke-CodeBuilder {
     #=======================================================
     # building mx
     #=======================================================
+
+    $command = "dotnet restore ""$($builddir)Modules.sln"""
+    Invoke-Command $command
 
     $res = Invoke-CodeCompilation -Solution "$($builddir)Modules.sln" -BuildLog $cxoutfile
     if (!$res) {
