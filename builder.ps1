@@ -54,6 +54,7 @@ $FIPinstall = "$($installs)FIELDPRO_WIX\BUILD_RELEASE.bat";
 $machine = $env:computername.ToUpper()
 #$vspath = "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\devenv.com"
 $vspath = "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\devenv.com"
+$MSBuildPath = "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
 
 function IsRelease() {
     return ($request.BuildType -eq 2)
@@ -576,7 +577,7 @@ function Invoke-CodeBuilder {
     # building phx
     #=======================================================
 
-    $command = "dotnet restore ""$($builddir)All.sln"""
+    $command = """$($MSBuildPath)"" ""$($builddir)All.sln"" -t:Restore -p:Configuration=Release"
     Invoke-Command $command
 
     $res = Invoke-CodeCompilation -Solution "$($builddir)All.sln" -BuildLog $fipoutfile
@@ -602,7 +603,7 @@ function Invoke-CodeBuilder {
     # building mx
     #=======================================================
 
-    $command = "dotnet restore ""$($builddir)Modules.sln"""
+    $command = """$($MSBuildPath)"" ""$($builddir)Modules.sln"" -t:Restore -p:Configuration=Release"
     Invoke-Command $command
 
     $res = Invoke-CodeCompilation -Solution "$($builddir)Modules.sln" -BuildLog $cxoutfile
