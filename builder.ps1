@@ -11,8 +11,8 @@ $buildExedir = "$($workdir)Release.exe\";
 $buildExeFile = "$($workdir)Release.exe\Fieldpro.exe";
 $bstinfo = "$($buildExedir)BSTRequestInfo.txt";
 $Migrator = "$($buildExedir)MigrateDB.exe";
-$SiteManager = "$($buildExedir)FieldproSiteManager.exe";
-$Fieldpro = "$($buildExedir)Fieldpro.exe";
+#$SiteManager = "$($buildExedir)FieldproSiteManager.exe";
+#$Fieldpro = "$($buildExedir)Fieldpro.exe";
 $mxbuildLibdir = "$($workdir)Modules.32\Release.lib\";
 $mxbuildExedir = "$($workdir)Modules.32\Release.exe\";
 $bstfile = "$($workdir)Common\BSTUserName.h"
@@ -184,7 +184,7 @@ function Unlock-Usb([string]$id) {
     )
 }
 
-function Install-Sign([string]$Path) {
+function Install-Sign([string[]]$Paths) {
     $IsRelease = IsRelease
     if (-not $IsRelease) {
         Write-State "Signing skipped (not a release)"
@@ -214,8 +214,11 @@ function Install-Sign([string]$Path) {
     }
 
     Write-State "Signing..."
-    $Signer = """$($signtool)"" sign /f ""$($Cer)"" /csp ""eToken Base Cryptographic Provider"" /k ""[{{$($request.SignPass)}}]=$($request.SignContainer)"" /fd SHA256 /t http://timestamp.digicert.com /d ""FIELDPRO® Application"" ""$($Path)"""
-    Invoke-Command $Signer
+    foreach ($Path in $Paths) {
+        Write-State "Signing: $($Path)"
+        $Signer = """$($signtool)"" sign /f ""$($Cer)"" /csp ""eToken Base Cryptographic Provider"" /k ""[{{$($request.SignPass)}}]=$($request.SignContainer)"" /fd SHA256 /t http://timestamp.digicert.com /d ""FIELDPRO® Application"" ""$($Path)"""
+        Invoke-Command $Signer
+    }
 
     $disconnector = """$($usbip)"" -d detach -p 0"
     Invoke-Command $disconnector
@@ -650,6 +653,17 @@ function Invoke-CodeBuilder {
     Copy-Item "$($buildExedir)Template.oif" -Destination "$($mxbuildExedir)"
     if (IsBuildCancelled) { return }
 
+    Write-State "Signing *dll, *.exe"
+    $extraFiles = 'starling.dll','StarlingPro.dll','DatabaseStream.dll','DLISConvertWizard.dll','DLISReader.dll','F2Screen.dll','GeoShareWizard.dll','HeaderInformation.dll','ManagedForm.dll','ManagedUtils.dll','MergeChannelsWizard.dll','MFPModels.dll','PDFWorker.exe','Tiles.dll','TransformWizard.dll','TransmitWizard.dll','Wdata.dll','WFPModels.dll'
+    $extraFiles += 'A3d32.dll','A3DDLL.DLL','CharSet.exe','DB4FracPro.dll','DB4Tools.dll','Dset32.dll','Fpfrac.dll','FracFor.dll','Graph.dll','Input32.dll','MULPAGE.DLL','ODBCM232.DLL','Psfrac.dll','Src.dll','TreatCalcHelper.dll','Virt3d32.dll','Wbwnd32.dll','Wmffrac.dll','WTA.exe','WtaLib.dll','ZLib.dll'
+    $extraFiles += 'MakeSpriteFont.exe','MetaData.dll','PROMailReceive.exe'
+#    $extraFiles += 'FCT32.DLL','FCDB32.DLL','FLUID32.DLL','DFORMD.DLL'
+    if (!(Install-Sign (Get-ChildItem -Path $buildExedir, $mxbuildExedir -Recurse -File -ErrorAction SilentlyContinue |
+                        Where-Object { $_.Extension -in '.dll', '.exe' -and ( $_.VersionInfo.ProductName -like '*fieldpro*' -or $_.Name -in $extraFiles ) } |
+                        Select-Object -ExpandProperty FullName))) {
+        return
+    }
+
     #=======================================================
     # making mx installation
     #=======================================================
@@ -724,13 +738,6 @@ function Invoke-CodeBuilder {
     
     Remove-File $FIPinstallRes
     Remove-File $FIPinstallResOrig
-
-    if (!(Install-Sign $SiteManager)) {
-        return
-    }
-    if (!(Install-Sign $Fieldpro)) {
-        return
-    }
 
     Invoke-Command "$($FIPinstall)"
 
