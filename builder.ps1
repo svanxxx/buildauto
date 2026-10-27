@@ -580,7 +580,7 @@ function Invoke-CodeBuilder {
     # building phx
     #=======================================================
 
-    $command = """$($MSBuildPath)"" ""$($builddir)All.sln"" -t:Restore -p:Configuration=Release"
+    $command = """$($MSBuildPath)"" ""$($builddir)All.sln"" -t:Restore -p:Configuration=Release -p:RestorePackagesConfig=true"
     Invoke-Command $command
 
     $res = Invoke-CodeCompilation -Solution "$($builddir)All.sln" -BuildLog $fipoutfile
@@ -606,7 +606,7 @@ function Invoke-CodeBuilder {
     # building mx
     #=======================================================
 
-    $command = """$($MSBuildPath)"" ""$($builddir)Modules.sln"" -t:Restore -p:Configuration=Release"
+    $command = """$($MSBuildPath)"" ""$($builddir)Modules.sln"" -t:Restore -p:Configuration=Release -p:RestorePackagesConfig=true"
     Invoke-Command $command
 
     $res = Invoke-CodeCompilation -Solution "$($builddir)Modules.sln" -BuildLog $cxoutfile
