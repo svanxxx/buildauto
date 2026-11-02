@@ -427,10 +427,10 @@ function Invoke-Code-Synch([string]$branch) {
         Write-State "Pull Code ($($branch)) From Git..."
         Set-Location $($workdir);
         Invoke-Command "git reset --hard"
-	Invoke-Command "git clean -fd"
+	Invoke-Command "git clean -fdx"
         Invoke-Command "git checkout master"
         Invoke-Command "git reset --hard"
-	Invoke-Command "git clean -fd"
+	Invoke-Command "git clean -fdx"
         $branches = git branch
         if ($branches -is [array]) {
             For ($i = 0; $i -lt $branches.Length; $i++) {
