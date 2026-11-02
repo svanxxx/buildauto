@@ -377,6 +377,7 @@ function Invoke-Cleanup([bool]$weboutput) {
         Remove-Item -Path "$($buildExedir)*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
         Remove-Item -Path "$($mxbuildLibdir)*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
         Remove-Item -Path "$($mxbuildExedir)*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
+	Get-ChildItem -Path "$($workdir)" -Filter "obj" -Directory -Recurse -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -Path "$($workdir).obj\*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
         Remove-Item -Path "$($workdir)eFieldpro\bin\*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue -Exclude .gitignore
         Remove-Item -Path "$($workdir)eFieldpro\API\bin\*" -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue -Exclude .gitignore
@@ -426,8 +427,10 @@ function Invoke-Code-Synch([string]$branch) {
         Write-State "Pull Code ($($branch)) From Git..."
         Set-Location $($workdir);
         Invoke-Command "git reset --hard"
+	Invoke-Command "git clean -fd"
         Invoke-Command "git checkout master"
         Invoke-Command "git reset --hard"
+	Invoke-Command "git clean -fd"
         $branches = git branch
         if ($branches -is [array]) {
             For ($i = 0; $i -lt $branches.Length; $i++) {
